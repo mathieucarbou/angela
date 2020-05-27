@@ -345,7 +345,6 @@ public class Tsa implements AutoCloseable {
 
   public Tsa activateAll() {
     Topology topology = tsaConfigurationContext.getTopology();
-    List<List<TerracottaServer>> stripes = topology.getStripes();
     ConfigurationManager configurationManager = topology.getConfigurationManager();
     Set<ServerSymbolicName> notStartedServers = new HashSet<>();
     for (TerracottaServer terracottaServer : configurationManager.getServers()) {
@@ -361,10 +360,21 @@ public class Tsa implements AutoCloseable {
     if (configurationManager instanceof DynamicConfigManager) {
       TerracottaServer terracottaServer = configurationManager.getServers().get(0);
       logger.info("Activating cluster from {}", terracottaServer.getHostname());
+      TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
+
       IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, () -> {
-        TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
         Agent.controller.configure(instanceId, terracottaServer, topology, null, tsaConfigurationContext.getClusterName(), null, cliEnv, false);
       });
+
+      if (topology.isNetDisruptionEnabled()) {
+        Map<ServerSymbolicName, Integer> proxyTsaPorts = updateToProxiedPorts();
+        int proxyPort = proxyTsaPorts.get(terracottaServer.getServerSymbolicName());
+        IgniteCallable<ConfigToolExecutionResult> callable = () -> {
+          return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv, "set", "-s", "localhost:" + terracottaServer.getTsaPort(),
+              "-c", "stripe.1.public-hostname=localhost", "-c", "stripe.1.public-port=" + proxyPort);
+        };
+        IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
+      }
       return this;
     } else {
       throw new IllegalStateException();
