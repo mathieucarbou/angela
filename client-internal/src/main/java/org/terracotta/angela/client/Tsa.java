@@ -18,6 +18,7 @@
 package org.terracotta.angela.client;
 
 import org.apache.ignite.Ignite;
+import org.apache.ignite.lang.IgniteCallable;
 import org.apache.ignite.lang.IgniteRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
