@@ -18,7 +18,6 @@
 package org.terracotta.angela.client;
 
 import org.apache.ignite.Ignite;
-import org.apache.ignite.lang.IgniteCallable;
 import org.apache.ignite.lang.IgniteRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,24 +153,28 @@ public class Tsa implements AutoCloseable {
     localKitManager.setupLocalInstall(license, kitInstallationPath, offline);
 
     boolean isRemoteInstallationSuccessful;
-    IgniteCallable<Boolean> installTsaCallable = () -> Agent.controller.installTsa(instanceId, terracottaServer,
-        license, localKitManager.getKitInstallationName(), distribution, topology);
     if (kitInstallationPath == null || Boolean.parseBoolean(SKIP_KIT_INSTALL.getValue())) {
       logger.info("Attempting to remotely install if distribution already exists on {}", terracottaServer.getHostname());
-      isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, installTsaCallable);
-    } else {
-      isRemoteInstallationSuccessful = false;
-    }
+      isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
+          () -> Agent.controller.installTsa(instanceId, terracottaServer,
+              license, localKitManager.getKitInstallationName(), distribution, topology, null));
 
-    if (!isRemoteInstallationSuccessful) {
-      try {
-        logger.info("Uploading {} on {}", distribution, terracottaServer.getHostname());
-        IgniteClientHelper.uploadKit(ignite, terracottaServer.getHostname(), ignitePort, instanceId, distribution, localKitManager
-            .getKitInstallationName(), localKitManager.getKitInstallationPath().toFile());
-        IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, installTsaCallable);
-      } catch (Exception e) {
-        throw new RuntimeException("Cannot upload kit to " + terracottaServer.getHostname(), e);
+      if (!isRemoteInstallationSuccessful) {
+        try {
+          logger.info("Uploading {} on {}", distribution, terracottaServer.getHostname());
+          IgniteClientHelper.uploadKit(ignite, terracottaServer.getHostname(),
+              ignitePort, instanceId, distribution, localKitManager.getKitInstallationName(), localKitManager.getKitInstallationPath().toFile());
+          IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
+              () -> Agent.controller.installTsa(instanceId, terracottaServer,
+                  license, localKitManager.getKitInstallationName(), distribution, topology, null));
+        } catch (Exception e) {
+          throw new RuntimeException("Cannot upload kit to " + terracottaServer.getHostname(), e);
+        }
       }
+    } else {
+      isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
+          () -> Agent.controller. installTsa(instanceId, terracottaServer,
+              license, localKitManager.getKitInstallationName(), distribution, topology, kitInstallationPath));
     }
   }
 
@@ -199,9 +202,11 @@ public class Tsa implements AutoCloseable {
       throw new IllegalStateException("Cannot uninstall: server " + terracottaServer.getServerSymbolicName() + " in state " + terracottaServerState);
     }
 
+    String kitInstallationPath = getEitherOf(KIT_INSTALLATION_DIR, KIT_INSTALLATION_PATH);
+
     logger.info("Uninstalling TC server from {}", terracottaServer.getHostname());
     IgniteRunnable uninstaller = () -> Agent.controller.uninstallTsa(instanceId, tsaConfigurationContext.getTopology(),
-        terracottaServer, localKitManager.getKitInstallationName());
+        terracottaServer, localKitManager.getKitInstallationName(), kitInstallationPath);
     IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, uninstaller);
   }
 
@@ -540,7 +545,7 @@ public class Tsa implements AutoCloseable {
     Topology topology = tsaConfigurationContext.getTopology();
     ConfigurationManager configurationManager = topology.getConfigurationManager();
     if (configurationManager instanceof TcConfigManager) {
-      TcConfigManager tcConfigProvider = (TcConfigManager) configurationManager;
+      TcConfigManager tcConfigProvider = (TcConfigManager)configurationManager;
       List<TcConfig> tcConfigs = tcConfigProvider.getTcConfigs();
       for (TcConfig tcConfig : tcConfigs) {
         Collection<String> dataDirectories = tcConfig.getDataDirectories().values();
@@ -548,7 +553,8 @@ public class Tsa implements AutoCloseable {
         for (String directory : dataDirectories) {
           for (TerracottaServer server : servers) {
             try {
-              File localFile = new File(localRootPath, server.getServerSymbolicName().getSymbolicName() + "/" + directory);
+              File localFile = new File(localRootPath, server.getServerSymbolicName()
+                                                           .getSymbolicName() + "/" + directory);
               browse(server, directory).upload(localFile);
             } catch (IOException ioe) {
               exceptions.add(ioe);
@@ -571,7 +577,7 @@ public class Tsa implements AutoCloseable {
     Topology topology = tsaConfigurationContext.getTopology();
     ConfigurationManager configurationManager = topology.getConfigurationManager();
     if (configurationManager instanceof TcConfigManager) {
-      TcConfigManager tcConfigProvider = (TcConfigManager) configurationManager;
+      TcConfigManager tcConfigProvider = (TcConfigManager)configurationManager;
       List<TcConfig> tcConfigs = tcConfigProvider.getTcConfigs();
       for (TcConfig tcConfig : tcConfigs) {
         Map<String, String> dataDirectories = tcConfig.getDataDirectories();
@@ -580,7 +586,8 @@ public class Tsa implements AutoCloseable {
           for (Map.Entry<String, String> entry : dataDirectories.entrySet()) {
             String directory = entry.getValue();
             try {
-              browse(server, directory).downloadTo(new File(localRootPath + "/" + server.getServerSymbolicName().getSymbolicName(), directory));
+              browse(server, directory).downloadTo(new File(localRootPath + "/" + server.getServerSymbolicName()
+                  .getSymbolicName(), directory));
             } catch (IOException ioe) {
               exceptions.add(ioe);
             }
