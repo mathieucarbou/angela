@@ -61,24 +61,107 @@ include::../java/GettingStarted.java[tags=showTsaApi]
 <9> Stop one Terracotta server
 <10> Get the current state of the Terracotta server
 
-== Dynamic Tsa API
-Angela 3 adds support for dynamic config feature of Terracotta, which doesn't rely on a static tc-config XML file anymore.
-The feature adds the capability to change cluster settings and topology (e.g. node attach and detach at runtime).
-Since dynamic config doesn't rely on a tc-config.xml file and configured dynamically, therefore the Angela API provides a DynamicConfigManager.dynamicCluster() method to define within the test the different parameters.
-It is possible to dynamically attach or detach stripes, which is done with the Tsa.attach() and Tsa.detach() API.
-The config tool will activate attached Terracotta servers, which is done by the Tsa.activate() method.
-Angela provides a new API to be able to use this feature, an example of which is as under:
+== Dynamic config support
+Angela 3 adds support for dynamic config feature of Terracotta.
+
+The dynamic config feature adds the possibility to change the cluster topology dynamically while the cluster is up.
+
+=== Dynamic config Concepts
+
+Therefore, a number of new concepts have been introduced:
+
+- There is no tc-config.xml file anymore. A cluster is defined in a *repository* (which is a folder on the disk containing the cluster definition)
+
+- a Terracotta server is named a *node*
+
+- the _config-tool_ allows to *attach* (add) and *detach* (remove) nodes from the cluster
+
+- the _config-tool_ allows to *activate* (define) new stripes in the cluster.
+
+=== Dynamic config API
+
+To tackle with this new functionality, Angela provides a specific API for the dynamic config:
+
+Instead of giving the reference of the tc-config file :
+
+```
+TcConfig.tcConfig(version(TERRACOTTA_VERSION), "/some/tc-config.xml")
+```
+
+We define the cluster topology and settings using the DynamicConfigManager.dynamicCluster() method
+
+```
+DynamicConfigManager.dynamicCluster()
+                stripe(
+                    server("server-1", "localhost")
+                        .tsaPort(9410)
+                        .tsaGroupPort(9411)
+                        .configRepo("terracotta1/repository")
+                        .logs("terracotta1/logs")
+                        .metaData("terracotta1/metadata")
+                        .failoverPriority("availability")
+                    )
+                )
+```
+
+A cluster can be started with the usual start/startAll methods
+
+```
+Tsa.startAll()
+```
+
+However, nodes are not ready yet, they are started in a new *DIAGNOSTIC* mode, which means that they are waiting for the user to attach them to the cluster, and to be activated (being part of a stripe)
+
+Therefore, after starting the nodes, you need to attach them
+
+```
+Tsa.attachAll()
+```
+
+And finally for the stripes:
+
+```
+Tsa.activateAll()
+```
+
+Those three operations can be chained:
+
+```
+Tsa.startAll().attachAll().activateAll()
+```
+
+When the cluster is up, you can dynamically attach or detach new nodes.
+
+```
+   tsa.attachNode(0, server("server-3", "localhost")
+          .tsaPort(9610)
+          .tsaGroupPort(9611)
+          .configRepo("terracotta3/repository")
+          .logs("terracotta3/logs")
+          .metaData("terracotta3/metadata")
+          .failoverPriority("availability"));
+```
+
+```
+      // detach the 2nd node (index=1) from the 1st stripe (index=0)
+      TerracottaServer toDetach = tsa.getServer(0, 1); // 1st stripe, 2nd node
+      tsa.detachNode(0, 1);
+      tsa.stop(toDetach);
+```
+
+
 [source,java]
 ----
 include::../java/GettingStarted.java[tags=showDynamicTsaApi]
 ----
-<1> Define an intial dynamic cluster topology
+<1> Define an initial dynamic cluster topology
 <2> Start all Terracotta servers
-<3> Attach all servers defined in the intial topology to create an unconfigured cluster
+<3> Attach all servers defined in the initial topology to create an unconfigured cluster
 <4> Attach a single server stripe dynamically to the cluster
 <5> Detach the second node from the first stripe
 <6> Stop the detached server
 <7> Activate the cluster
+
 
 == Client array example
 
