@@ -124,10 +124,15 @@ And finally:
 Tsa.activateAll()
 ```
 this does several things:
+
 - Set a cluster name
+
 - Install and validate the license
+
 - Validate the configuration for each node
+
 - Creating (saving) the validated cluster config into the config repository
+
 - Restart the nodes
 
 
