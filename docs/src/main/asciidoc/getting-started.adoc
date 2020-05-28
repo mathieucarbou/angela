@@ -110,7 +110,7 @@ A cluster can be started with the usual start/startAll methods
 Tsa.startAll()
 ```
 
-However, nodes are not ready yet, they are started in a new *DIAGNOSTIC* mode, which means that they are waiting for the user to attach them to the cluster, and to be activated (being part of a stripe)
+However, nodes are not ready yet, they are started in a new *DIAGNOSTIC* mode, which means that they are waiting for the user to attach them to the cluster, and to be activated (to be effective)
 
 Therefore, after starting the nodes, you need to attach them
 
@@ -118,11 +118,18 @@ Therefore, after starting the nodes, you need to attach them
 Tsa.attachAll()
 ```
 
-And finally for the stripes:
+And finally:
 
 ```
 Tsa.activateAll()
 ```
+this does several things:
+- Set a cluster name
+- Install and validate the license
+- Validate the configuration for each node
+- Creating (saving) the validated cluster config into the config repository
+- Restart the nodes
+
 
 Those three operations can be chained:
 
