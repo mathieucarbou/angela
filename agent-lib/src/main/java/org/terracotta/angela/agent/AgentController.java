@@ -125,7 +125,7 @@ public class AgentController {
         logger.info("Installing kit for {} from {}", terracottaServer, distribution);
         kitLocation = kitManager.installKit(license, topology.getServersHostnames());
         workingDir = kitManager.getWorkingDir().toFile();
-        terracottaInstall = kitsInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(workingDir.getParentFile(), portAllocator));
+        terracottaInstall = kitsInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(workingDir, portAllocator));
       } else {
         kitLocation = new File(kitInstallationPath);
         Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
