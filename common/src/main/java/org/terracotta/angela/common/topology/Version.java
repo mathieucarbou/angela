@@ -75,6 +75,10 @@ public class Version implements Comparable<Version> {
   }
 
   private int parseRevisionVersion(String input) {
+    if (input.contains("pre")) {
+      final String[] split = input.split("-");
+      input = split[0];
+    }
     int revision = parse(input);
     if (revision < 0) {
       throw new IllegalArgumentException("Expected revision to be a positive number, but found: " + input);
