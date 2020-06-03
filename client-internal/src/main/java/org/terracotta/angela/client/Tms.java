@@ -144,9 +144,10 @@ public class Tms implements AutoCloseable {
     }
 
     logger.info("Uninstalling TMS from {}", tmsHostname);
-    IgniteClientHelper.executeRemotely(ignite, tmsHostname, ignitePort, () -> Agent.controller.uninstallTms(instanceId, tmsConfigurationContext
-        .getDistribution(), localKitManager
-        .getKitInstallationName(), tmsHostname));
+    IgniteClientHelper.executeRemotely(ignite, tmsHostname, ignitePort,
+        () -> Agent.controller.uninstallTms(instanceId, tmsConfigurationContext.getDistribution(),
+            tmsConfigurationContext.getSecurityConfig(),
+            localKitManager.getKitInstallationName(), tmsHostname));
   }
 
   private void install() {
