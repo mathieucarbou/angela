@@ -240,6 +240,26 @@ public class AgentController {
     }
   }
 
+  private void disableTmsSecurity(File tmcProperties, TmsServerSecurityConfig tmsServerSecurityConfig) {
+    Properties properties = new Properties();
+
+    try (InputStream inputStream = new FileInputStream(tmcProperties)) {
+      properties.load(inputStream);
+    } catch (Exception ex) {
+      throw new RuntimeException("Unable to disable security in TMS tmc.properties file", ex);
+    }
+
+    tmsServerSecurityConfig.toMap().forEach((key, value) -> {
+        properties.remove(key);
+    });
+
+    try (OutputStream outputStream = new FileOutputStream(tmcProperties)) {
+      properties.store(outputStream, null);
+    } catch (Exception ex) {
+      throw new RuntimeException("Unable to disable security in TMS tmc.properties file", ex);
+    }
+  }
+
   public void startTms(InstanceId instanceId) {
     TerracottaManagementServerInstance serverInstance = tmsInstalls.get(instanceId)
         .getTerracottaManagementServerInstance();
@@ -300,10 +320,16 @@ public class AgentController {
   }
 
 
-  public void uninstallTms(InstanceId instanceId, Distribution distribution, String kitInstallationName, String tmsHostname) {
+  public void uninstallTms(InstanceId instanceId, Distribution distribution, TmsServerSecurityConfig tmsServerSecurityConfig,
+                           String kitInstallationName, String tmsHostname) {
     TmsInstall tmsInstall = tmsInstalls.get(instanceId);
     if (tmsInstall != null) {
+      File tmcProperties = new File(tmsInstall.getKitLocation(), "/tools/management/conf/tmc.properties");
+      if (tmsServerSecurityConfig != null) {
+        disableTmsSecurity(tmcProperties, tmsServerSecurityConfig);
+      }
       tmsInstall.removeServer();
+
       TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
       int numberOfTerracottaInstances = (terracottaInstall != null ? terracottaInstall.terracottaServerInstanceCount() : 0);
       VoterInstall voterInstall = voterInstalls.get(instanceId);
