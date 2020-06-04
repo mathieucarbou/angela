@@ -45,6 +45,7 @@ import org.zeroturnaround.exec.stream.slf4j.Slf4jStream;
 
 import java.io.File;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -244,7 +245,7 @@ public class Distribution107Controller extends DistributionController {
       args.add("-l");
       args.add(licensePath);
     }
-    invokeConfigTool(kitDir, workingDir, tcEnv, args.toArray(new String[0]));
+    invokeConfigTool(kitDir, workingDir, tcEnv, server.getSecurityDir(), args.toArray(new String[0]));
   }
 
   @Override
@@ -253,13 +254,17 @@ public class Distribution107Controller extends DistributionController {
   }
 
   @Override
-  public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
+  public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Path securityDir, String... arguments) {
     List<String> command = new ArrayList<>();
     command.add(kitDir
         + separator + "tools"
         + separator + "config-tool"
         + separator + "bin"
         + separator + "config-tool" + OS.INSTANCE.getShellExtension());
+    if (securityDir != null) {
+      command.add("-srd");
+      command.add(securityDir.toString());
+    }
     command.addAll(Arrays.asList(arguments));
     LOGGER.info("Invoking config tool with args: {}", Arrays.asList(arguments));
 
@@ -361,14 +366,14 @@ public class Distribution107Controller extends DistributionController {
       options.add(server.getMetaData());
     }
 
-    if (server.getDataDir() != null) {
+    if (server.getDataDir().size() != 0) {
       options.add("-d");
-      options.add(server.getDataDir());
+      options.add(join(",", server.getDataDir()));
     }
 
-    if (server.getOffheap() != null) {
+    if (server.getOffheap().size() != 0) {
       options.add("-o");
-      options.add(server.getOffheap());
+      options.add(join(",", server.getOffheap()));
     }
 
     if (server.getLogs() != null) {

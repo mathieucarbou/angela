@@ -20,6 +20,8 @@ package org.terracotta.angela.common.tcconfig;
 import org.terracotta.angela.common.util.HostPort;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -47,8 +49,8 @@ public class TerracottaServer {
   private volatile String configFile;
   private volatile String logs;
   private volatile String metaData;
-  private volatile String dataDir;
-  private volatile String offheap;
+  private final List<String> dataDir = new ArrayList<>();
+  private final List<String> offheap = new ArrayList<>();
   private volatile String failoverPriority;
   private volatile String clientLeaseDuration;
   private String properties;
@@ -126,7 +128,7 @@ public class TerracottaServer {
   }
 
   public TerracottaServer dataDir(String dataDir) {
-    this.dataDir = dataDir;
+    this.dataDir.add(dataDir);
     return this;
   }
 
@@ -136,7 +138,7 @@ public class TerracottaServer {
   }
 
   public TerracottaServer offheap(String offheap) {
-    this.offheap = offheap;
+    this.offheap.add(offheap);
     return this;
   }
 
@@ -241,11 +243,11 @@ public class TerracottaServer {
     return metaData;
   }
 
-  public String getDataDir() {
+  public List<String> getDataDir() {
     return dataDir;
   }
 
-  public String getOffheap() {
+  public List<String> getOffheap() {
     return offheap;
   }
 
