@@ -161,7 +161,7 @@ public class Distribution102Controller extends DistributionController {
   }
 
   @Override
-  public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, String... arguments) {
+  public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments) {
     throw new UnsupportedOperationException("Config Tool is supported only for a dynamically-configured cluster");
   }
 

@@ -382,7 +382,7 @@ public class DynamicClusterTest {
                                 .failoverPriority("availability")
                         ),
                         stripe(
-                            server("server-1", "localhost")
+                            server("server-2", "localhost")
                                 .tsaPort(9510)
                                 .tsaGroupPort(9511)
                                 .configRepo("terracotta2/repository")

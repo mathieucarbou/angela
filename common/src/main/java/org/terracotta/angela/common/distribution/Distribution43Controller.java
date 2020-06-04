@@ -46,6 +46,7 @@ import org.zeroturnaround.exec.ProcessResult;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -213,7 +214,7 @@ public class Distribution43Controller extends DistributionController {
   }
 
   @Override
-  public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, String... arguments) {
+  public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments) {
     throw new UnsupportedOperationException("4.x does not support config tool");
   }
 
