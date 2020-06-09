@@ -258,7 +258,6 @@ public class Distribution107Controller extends DistributionController {
     List<String> command = new ArrayList<>();
     command.add(kitDir
         + separator + "tools"
-        + separator + "config-tool"
         + separator + "bin"
         + separator + "config-tool" + OS.INSTANCE.getShellExtension());
     if (securityDir != null) {
