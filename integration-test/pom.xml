@@ -24,7 +24,7 @@
   <parent>
     <groupId>org.terracotta</groupId>
     <artifactId>angela-root</artifactId>
-    <version>3.0.33-SNAPSHOT</version>
+    <version>3.0.34-SNAPSHOT</version>
   </parent>
 
   <artifactId>integration-test</artifactId>
@@ -70,6 +70,24 @@
 
   <!-- This is required to pass the 'terracotta.version' from the pom, via the versions.properties resource -->
   <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <configuration>
+          <skipTests>true</skipTests>
+          <argLine>-Xmx1024m</argLine>
+          <systemProperties>
+            <angela.rootDir>${project.build.directory}/angela</angela.rootDir>
+            <angela.java.vendor/> <!-- use any vendor for the tests -->
+            <jdk.security.allowNonCaAnchor>true</jdk.security.allowNonCaAnchor>
+            <!--              <angela.igniteLogging>true</angela.igniteLogging>-->
+            <!--              <angela.java.opts>-agentlib:jdwp=transport=dt_socket,server=n,address=c02yj2f2jgh6.home:5005,suspend=n</angela.java.opts>-->
+          </systemProperties>
+        </configuration>
+      </plugin>
+    </plugins>
+
     <testResources>
       <testResource>
         <directory>src/test/resources</directory>
