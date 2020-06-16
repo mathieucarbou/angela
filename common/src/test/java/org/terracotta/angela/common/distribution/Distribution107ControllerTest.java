@@ -1,6 +1,7 @@
 package org.terracotta.angela.common.distribution;
 
 import org.junit.Test;
+import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.PackageType;
@@ -10,6 +11,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -142,15 +144,47 @@ public class Distribution107ControllerTest {
     }
   }
 
-
   @Test
-  public void testStartTmsCommand() {
+  public void testStartTmsCommandForKit() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.KIT);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
 
+    final File installLocation = new File("/somedir");
+    final List<String> tsaCommand = controller.startTmsCommand( installLocation);
+
+    assertThat(tsaCommand.get(0), is(equalTo("/somedir/tools/management/bin/start" + OS.INSTANCE.getShellExtension())));
+    assertThat(tsaCommand.size(), is(1));
   }
 
   @Test
-  public void testStartVoterCommand() {
+  public void testStartTmsCommandForSAG() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.SAG_INSTALLER);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
 
+    final File installLocation = new File("/somedir");
+    final List<String> tsaCommand = controller.startTmsCommand( installLocation);
+
+    assertThat(tsaCommand.get(0), is(equalTo("/somedir/TerracottaDB/tools/management/bin/start" + OS.INSTANCE.getShellExtension())));
+    assertThat(tsaCommand.size(), is(1));
+  }
+
+  @Test
+  public void testStartVoterCommandForSAG() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.SAG_INSTALLER);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
+
+    final File installLocation = new File("/somedir");
+    final TerracottaVoter terracottaVoter = mock(TerracottaVoter.class);
+    when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList(new String[] { "9410", "9510" }));
+    final List<String> voterCommand = controller.startVoterCommand( installLocation, terracottaVoter);
+
+    assertThat(voterCommand.get(0), is(equalTo("/somedir/TerracottaDB/voter/bin/start-tc-voter" + OS.INSTANCE.getShellExtension())));
+    assertThat(voterCommand.get(1), is("-s"));
+    assertThat(voterCommand.get(2), is("9410,9510"));
+    assertThat(voterCommand.size(), is(3));
   }
 
 
