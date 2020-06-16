@@ -255,20 +255,8 @@ public class Distribution107Controller extends DistributionController {
 
   @Override
   public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Path securityDir, String... arguments) {
-    List<String> command = new ArrayList<>();
-    command.add(kitDir
-        + separator + "tools"
-        + separator + "bin"
-        + separator + "config-tool" + OS.INSTANCE.getShellExtension());
-    if (securityDir != null) {
-      command.add("-srd");
-      command.add(securityDir.toString());
-    }
-    command.addAll(Arrays.asList(arguments));
-    LOGGER.info("Invoking config tool with args: {}", Arrays.asList(arguments));
-
     try {
-      ProcessResult processResult = new ProcessExecutor(command)
+      ProcessResult processResult = new ProcessExecutor(createConfigToolCommand(kitDir, securityDir, arguments))
           .directory(workingDir)
           .environment(buildEnv(tcEnv))
           .readOutput(true)
@@ -304,7 +292,7 @@ public class Distribution107Controller extends DistributionController {
     return "server" + separator + "plugins" + separator + "lib";
   }
 
-  private List<String> createTsaCommand(TerracottaServer terracottaServer, File kitLocation, List<String> startUpArgs) {
+  List<String> createTsaCommand(TerracottaServer terracottaServer, File kitLocation, List<String> startUpArgs) {
     List<String> command = new ArrayList<>();
     command.add(getTsaCreateExecutable(kitLocation));
 
@@ -444,7 +432,32 @@ public class Distribution107Controller extends DistributionController {
     throw new IllegalStateException("Can not define Terracotta server Start Command for distribution: " + distribution);
   }
 
-  private List<String> startTmsCommand(File installLocation) {
+  List<String> createConfigToolCommand(File installLocation, Path securityDir, String[] arguments) {
+    List<String> command = new ArrayList<>();
+    command.add(getConfigToolExecutable(installLocation));
+    if (securityDir != null) {
+      command.add("-srd");
+      command.add(securityDir.toString());
+    }
+    command.addAll(Arrays.asList(arguments));
+
+    LOGGER.debug(" Config Tool command = {}", command);
+    return command;
+  }
+
+  private String getConfigToolExecutable(File installLocation) {
+    String execPath = "tools" + separator + "bin" + separator + "config-tool" + OS.INSTANCE.getShellExtension();
+
+    if (distribution.getPackageType() == PackageType.KIT) {
+      return installLocation.getAbsolutePath() + separator + execPath;
+    } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
+      return installLocation.getAbsolutePath() + separator + terracottaInstallationRoot() + separator + execPath;
+    }
+    throw new IllegalStateException("Can not define Config Tool Command for distribution: " + distribution);
+  }
+
+
+  List<String> startTmsCommand(File installLocation) {
     List<String> command = new ArrayList<>();
     command.add(getStartTmsExecutable(installLocation));
     LOGGER.debug(" Start TMS command = {}", command);
@@ -461,7 +474,7 @@ public class Distribution107Controller extends DistributionController {
     throw new IllegalStateException("Can not define TMS Start Command for distribution: " + distribution);
   }
 
-  private List<String> startVoterCommand(File installLocation, TerracottaVoter terracottaVoter) {
+  List<String> startVoterCommand(File installLocation, TerracottaVoter terracottaVoter) {
     List<String> command = new ArrayList<>();
     command.add(getStartVoterExecutable(installLocation));
     command.add("-s");
