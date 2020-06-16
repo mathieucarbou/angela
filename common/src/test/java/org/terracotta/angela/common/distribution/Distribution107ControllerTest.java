@@ -171,6 +171,23 @@ public class Distribution107ControllerTest {
   }
 
   @Test
+  public void testStartVoterCommandForKit() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.KIT);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
+
+    final File installLocation = new File("/somedir");
+    final TerracottaVoter terracottaVoter = mock(TerracottaVoter.class);
+    when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList(new String[] { "9410", "9510" }));
+    final List<String> voterCommand = controller.startVoterCommand( installLocation, terracottaVoter);
+
+    assertThat(voterCommand.get(0), is(equalTo("/somedir/voter/bin/start-tc-voter" + OS.INSTANCE.getShellExtension())));
+    assertThat(voterCommand.get(1), is("-s"));
+    assertThat(voterCommand.get(2), is("9410,9510"));
+    assertThat(voterCommand.size(), is(3));
+  }
+
+  @Test
   public void testStartVoterCommandForSAG() {
     Distribution distribution = mock(Distribution.class);
     when(distribution.getPackageType()).thenReturn(PackageType.SAG_INSTALLER);
