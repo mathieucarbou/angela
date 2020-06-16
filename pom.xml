@@ -68,7 +68,7 @@
     <module>agent</module>
     <module>docs</module>
     <module>angela</module>
-<!--    temporarily disabled until platform changes are made <module>integration-test</module>-->
+    <module>integration-test</module>
   </modules>
 
   <dependencyManagement>
