@@ -1,13 +1,15 @@
 package org.terracotta.angela.common.distribution;
 
 import org.junit.Test;
-import org.mockito.Mock;
+import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
+import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.PackageType;
 import org.terracotta.angela.common.util.OS;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -25,8 +27,49 @@ import static org.mockito.Mockito.when;
 public class Distribution107ControllerTest {
 
   @Test
-  public void testCreateTsaCommand() {
+  public void testCreateSimpleTsaCommandForKit() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.KIT);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
 
+    final TerracottaServer terracottaServer = mock(TerracottaServer.class);
+    final ServerSymbolicName symbolicName = mock(ServerSymbolicName.class);
+    when(terracottaServer.getServerSymbolicName()).thenReturn(symbolicName);
+    when(terracottaServer.getHostname()).thenReturn("localhost");
+    when(symbolicName.getSymbolicName()).thenReturn("Server1");
+    final File kitLocation = new File("/somedir");
+    final List<String> args = new ArrayList<>();
+    final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, args);
+
+    assertThat(tsaCommand.get(0), is(equalTo("/somedir/server/bin/start-tc-server" + OS.INSTANCE.getShellExtension())));
+    assertThat(tsaCommand.get(1), is(equalTo("-n")));
+    assertThat(tsaCommand.get(2), is(equalTo("Server1")));
+    assertThat(tsaCommand.get(3), is(equalTo("-s")));
+    assertThat(tsaCommand.get(4), is(equalTo("localhost")));
+    assertThat(tsaCommand.size(), is(5));
+  }
+
+  @Test
+  public void testCreateSimpleTsaCommandForSAG() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.SAG_INSTALLER);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
+
+    final TerracottaServer terracottaServer = mock(TerracottaServer.class);
+    final ServerSymbolicName symbolicName = mock(ServerSymbolicName.class);
+    when(terracottaServer.getServerSymbolicName()).thenReturn(symbolicName);
+    when(terracottaServer.getHostname()).thenReturn("localhost");
+    when(symbolicName.getSymbolicName()).thenReturn("Server1");
+    final File kitLocation = new File("/somedir");
+    final List<String> args = new ArrayList<>();
+    final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, args);
+
+    assertThat(tsaCommand.get(0), is(equalTo("/somedir/TerracottaDB/server/bin/start-tc-server" + OS.INSTANCE.getShellExtension())));
+    assertThat(tsaCommand.get(1), is(equalTo("-n")));
+    assertThat(tsaCommand.get(2), is(equalTo("Server1")));
+    assertThat(tsaCommand.get(3), is(equalTo("-s")));
+    assertThat(tsaCommand.get(4), is(equalTo("localhost")));
+    assertThat(tsaCommand.size(), is(5));
   }
 
   @Test
