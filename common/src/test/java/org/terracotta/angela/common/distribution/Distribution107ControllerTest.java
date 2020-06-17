@@ -1,6 +1,7 @@
 package org.terracotta.angela.common.distribution;
 
 import org.junit.Test;
+import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
@@ -18,7 +19,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -136,8 +136,12 @@ public class Distribution107ControllerTest {
   public void testClusterToolCommand() {
     Distribution distribution = mock(Distribution.class);
     Distribution107Controller controller = new Distribution107Controller(distribution);
+    File kitDir = new File("/");
+    File workingDir = new File("/");
+    TerracottaCommandLineEnvironment commandLineEnvironment = mock(TerracottaCommandLineEnvironment.class);
     try {
-      controller.invokeClusterTool(any(), any(), any());
+
+      controller.invokeClusterTool(kitDir, workingDir, commandLineEnvironment);
       fail("Dynamic config implementation");
     } catch (UnsupportedOperationException e) {
       // Expected
