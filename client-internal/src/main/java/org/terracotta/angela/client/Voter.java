@@ -39,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
+import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
 import static org.terracotta.angela.common.AngelaProperties.SKIP_UNINSTALL;
 import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 
@@ -122,7 +123,7 @@ public class Voter implements AutoCloseable {
     closed = true;
 
     stopAll();
-    if (!Boolean.parseBoolean(SKIP_UNINSTALL.getValue())) {
+    if (!SKIP_UNINSTALL.getBooleanValue()) {
       uninstallAll();
     }
   }
@@ -142,10 +143,9 @@ public class Voter implements AutoCloseable {
     TerracottaCommandLineEnvironment tcEnv = voterConfigurationContext.getTerracottaCommandLineEnvironment();
 
     logger.info("starting voter on {}", terracottaVoter.getHostName());
-    boolean offline = Boolean.parseBoolean(System.getProperty("offline", "false"));
 
     String kitInstallationPath = getEitherOf(KIT_INSTALLATION_DIR, KIT_INSTALLATION_PATH);
-    localKitManager.setupLocalInstall(license, kitInstallationPath, offline);
+    localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
 
     IgniteCallable<Boolean> callable = () -> Agent.controller.installVoter(instanceId, terracottaVoter, distribution, license,
         localKitManager.getKitInstallationName(), tcEnv);

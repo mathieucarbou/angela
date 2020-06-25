@@ -25,7 +25,6 @@ import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.agent.kit.LocalKitManager;
 import org.terracotta.angela.client.config.ClientArrayConfigurationContext;
 import org.terracotta.angela.client.filesystem.RemoteFolder;
-import org.terracotta.angela.client.util.IgniteClientHelper;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.clientconfig.ClientId;
 import org.terracotta.angela.common.topology.InstanceId;
@@ -44,6 +43,7 @@ import java.util.function.Supplier;
 import static org.terracotta.angela.client.util.IgniteClientHelper.executeRemotely;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
+import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
 import static org.terracotta.angela.common.AngelaProperties.SKIP_UNINSTALL;
 import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 
@@ -77,11 +77,9 @@ public class ClientArray implements AutoCloseable {
   }
 
   private void install(ClientId clientId) {
-    boolean offline = Boolean.parseBoolean(System.getProperty("offline", "false"));
-
     logger.info("Setting up locally the extracted install to be deployed remotely");
     String kitInstallationPath = getEitherOf(KIT_INSTALLATION_DIR, KIT_INSTALLATION_PATH);
-    localKitManager.setupLocalInstall(clientArrayConfigurationContext.getLicense(), kitInstallationPath, offline);
+    localKitManager.setupLocalInstall(clientArrayConfigurationContext.getLicense(), kitInstallationPath, OFFLINE.getBooleanValue());
 
     try {
       logger.info("installing the client jars to {}", clientId);
@@ -210,7 +208,7 @@ public class ClientArray implements AutoCloseable {
     }
     closed = true;
 
-    if (!Boolean.parseBoolean(SKIP_UNINSTALL.getValue())) {
+    if (!SKIP_UNINSTALL.getBooleanValue()) {
       uninstallAll();
     }
   }

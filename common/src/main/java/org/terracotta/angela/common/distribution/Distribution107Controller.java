@@ -25,10 +25,10 @@ import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaManagementServerState;
 import org.terracotta.angela.common.TerracottaServerInstance.TerracottaServerInstanceProcess;
-import org.terracotta.angela.common.TerracottaVoterState;
+import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance;
-import org.terracotta.angela.common.TerracottaServerState;
+import org.terracotta.angela.common.TerracottaVoterState;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
@@ -65,9 +65,9 @@ import static org.terracotta.angela.common.AngelaProperties.VOTER_FULL_LOGGING;
 
 public class Distribution107Controller extends DistributionController {
   private final static Logger LOGGER = LoggerFactory.getLogger(Distribution107Controller.class);
-  private final boolean tsaFullLogging = Boolean.parseBoolean(TSA_FULL_LOGGING.getValue());
-  private final boolean tmsFullLogging = Boolean.parseBoolean(TMS_FULL_LOGGING.getValue());
-  private final boolean voterFullLogging = Boolean.parseBoolean(VOTER_FULL_LOGGING.getValue());
+  private final boolean tsaFullLogging = TSA_FULL_LOGGING.getBooleanValue();
+  private final boolean tmsFullLogging = TMS_FULL_LOGGING.getBooleanValue();
+  private final boolean voterFullLogging = VOTER_FULL_LOGGING.getBooleanValue();
 
   public Distribution107Controller(Distribution distribution) {
     super(distribution);

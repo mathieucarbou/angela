@@ -77,8 +77,8 @@ import static org.terracotta.angela.common.util.HostAndIpValidator.isValidIPv6;
  */
 public class Distribution102Controller extends DistributionController {
   private final static Logger logger = LoggerFactory.getLogger(Distribution102Controller.class);
-  private final boolean tsaFullLogging = Boolean.parseBoolean(AngelaProperties.TSA_FULL_LOGGING.getValue());
-  private final boolean tmsFullLogging = Boolean.parseBoolean(AngelaProperties.TMS_FULL_LOGGING.getValue());
+  private final boolean tsaFullLogging = AngelaProperties.TSA_FULL_LOGGING.getBooleanValue();
+  private final boolean tmsFullLogging = AngelaProperties.TMS_FULL_LOGGING.getBooleanValue();
 
   Distribution102Controller(Distribution distribution) {
     super(distribution);
