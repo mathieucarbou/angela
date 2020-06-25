@@ -32,7 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 
-import static java.lang.Boolean.parseBoolean;
+import static org.terracotta.angela.common.AngelaProperties.KIT_COPY;
 import static org.terracotta.angela.common.AngelaProperties.SKIP_KIT_COPY_LOCALHOST;
 import static org.terracotta.angela.common.util.IpUtils.areAllLocal;
 
@@ -60,8 +60,9 @@ public class RemoteKitManager extends KitManager {
     try {
       Files.createDirectories(workingDir);
 
-      if (areAllLocal(serversHostnames) && parseBoolean(SKIP_KIT_COPY_LOCALHOST.getValue())) {
-        logger.info("Skipped copying kit from {} to {} as all hosts are local", kitInstallationPath.toAbsolutePath(), workingDir);
+      logger.info("TMS should copy a separate kit install ? {}", KIT_COPY.getBooleanValue());
+      if (areAllLocal(serversHostnames) && SKIP_KIT_COPY_LOCALHOST.getBooleanValue() && !KIT_COPY.getBooleanValue()) {
+        logger.info("Skipped copying kit from {} to {}", kitInstallationPath.toAbsolutePath(), workingDir);
         if (license != null) {
           license.writeToFile(kitInstallationPath.toFile());
         }

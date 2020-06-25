@@ -167,7 +167,8 @@ public class Tms implements AutoCloseable {
     logger.info("Attempting to remotely install if distribution already exists on {}", tmsHostname);
     IgniteCallable<Boolean> callable = () -> Agent.controller.installTms(instanceId, tmsHostname, distribution, license,
         tmsServerSecurityConfig, localKitManager.getKitInstallationName(), tcEnv, singleton(tmsConfigurationContext.getHostname()));
-    boolean isRemoteInstallationSuccessful = kitInstallationPath == null && IgniteClientHelper.executeRemotely(ignite, tmsHostname, ignitePort, callable);
+    boolean isRemoteInstallationSuccessful = kitInstallationPath == null
+                                             && IgniteClientHelper.executeRemotely(ignite, tmsHostname, ignitePort, callable);
 
     if (!isRemoteInstallationSuccessful) {
       try {

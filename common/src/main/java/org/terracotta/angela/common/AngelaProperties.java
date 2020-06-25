@@ -27,28 +27,54 @@ import java.nio.file.Paths;
  * Listing of all system properties supported in angela
  */
 public enum AngelaProperties {
+  // root dir where Angela puts installation, work directories and any file that is needed
   ROOT_DIR("angela.rootDir", Paths.get("/data/angela").toAbsolutePath().toString()),
+  // shortcut for angela.rootDir property above
+  KITS_DIR("kitsDir", Paths.get("/data/angela").toAbsolutePath().toString()),
+
+  // use this property to use a local build instead of downloading a kit build
   KIT_INSTALLATION_DIR("angela.kitInstallationDir", null),
+
+  // same as angela.kitInstallationDir, used for compatibility with Galvan
+  KIT_INSTALLATION_PATH("kitInstallationPath", null),
+
+  // ?
   SKIP_KIT_INSTALL("angela.skipKitInstall", "false"),
-  DIRECT_JOIN("angela.directJoin", ""),
-  IGNITE_LOGGING("angela.igniteLogging", "false"),
-  NODE_NAME("angela.nodeName", IpUtils.getHostName()),
+
+  // ?
   SKIP_KIT_COPY_LOCALHOST("angela.skipKitCopyLocalhost", "true"),
+
+  // ?
+  DISTRIBUTION("angela.distribution", null),
+
+  // display Ignite logging (used to help debugging the behaviour of Angela)
+  IGNITE_LOGGING("angela.igniteLogging", "false"),
+
+  // do not clean work directory (used to have access to logs after end of test for debugging test issues)
   SKIP_UNINSTALL("angela.skipUninstall", "false"),
+
+  // forces a kit copy instead of using a common kit install for multiple tests. useful for parallel execution of tests
+  //   that changes files in the kit install (e.g. tmc.properties)
+  KIT_COPY("angela.kitCopy", "false"),
+
+  // ssh properties
   SSH_USERNAME("angela.ssh.userName", System.getProperty("user.name")),
   SSH_USERNAME_KEY_PATH("angela.ssh.userName.keyPath", null),
   SSH_STRICT_HOST_CHECKING("angela.ssh.strictHostKeyChecking", "true"),
+
+  // logging properties
   TMS_FULL_LOGGING("angela.tms.fullLogging", "false"),
   TSA_FULL_LOGGING("angela.tsa.fullLogging", "false"),
   VOTER_FULL_LOGGING("angela.voter.fullLogging", "false"),
+
+  // jdk properties to be used by Angela for running processes
   JAVA_VENDOR("angela.java.vendor", "zulu"),
   JAVA_VERSION("angela.java.version", "1.8"),
   JAVA_OPTS("angela.java.opts", "-Djdk.security.allowNonCaAnchor=false"),
-  DISTRIBUTION("angela.distribution", null),
 
-  // Deprecated properties
-  KITS_DIR("kitsDir", Paths.get("/data/angela").toAbsolutePath().toString()),
-  KIT_INSTALLATION_PATH("kitInstallationPath", null),
+  // internal properties
+  DIRECT_JOIN("angela.directJoin", ""),
+  NODE_NAME("angela.nodeName", IpUtils.getHostName()),
   ;
 
   private static final Logger logger = LoggerFactory.getLogger(AngelaProperties.class);
@@ -108,5 +134,9 @@ public enum AngelaProperties {
       value = recommended.getDefaultValue();
     }
     return value;
+  }
+
+  public boolean getBooleanValue() {
+    return Boolean.parseBoolean(getValue());
   }
 }
