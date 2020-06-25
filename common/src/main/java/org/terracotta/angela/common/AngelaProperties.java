@@ -38,6 +38,9 @@ public enum AngelaProperties {
   // same as angela.kitInstallationDir, used for compatibility with Galvan
   KIT_INSTALLATION_PATH("kitInstallationPath", null),
 
+  // running the test offline (no network connection)
+  OFFLINE("angela.offline", "false"),
+
   // ?
   SKIP_KIT_INSTALL("angela.skipKitInstall", "false"),
 

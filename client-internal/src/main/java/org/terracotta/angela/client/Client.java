@@ -179,7 +179,7 @@ public class Client implements Closeable {
     closed = true;
 
     stop();
-    if (!Boolean.parseBoolean(SKIP_UNINSTALL.getValue())) {
+    if (!SKIP_UNINSTALL.getBooleanValue()) {
       logger.info("Wiping up client '{}' on {}", instanceId, clientId);
       IgniteClientHelper.executeRemotely(ignite, getHostname(), ignitePort, (IgniteRunnable)() -> Agent.controller.deleteClient(instanceId));
     }

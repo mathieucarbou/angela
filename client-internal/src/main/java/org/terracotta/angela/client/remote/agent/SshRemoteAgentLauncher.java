@@ -113,7 +113,7 @@ public class SshRemoteAgentLauncher implements RemoteAgentLauncher {
       SSHClient ssh = new SSHClient();
       final String angelaHome = ".angela/" + hostname;
 
-      if (!Boolean.parseBoolean(SSH_STRICT_HOST_CHECKING.getValue())) {
+      if (!SSH_STRICT_HOST_CHECKING.getBooleanValue()) {
         ssh.addHostKeyVerifier(new PromiscuousVerifier());
       }
       ssh.loadKnownHosts();

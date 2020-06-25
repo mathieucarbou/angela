@@ -38,6 +38,7 @@ import org.terracotta.angela.common.util.HostPort;
 import static java.util.Collections.singleton;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
+import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
 import static org.terracotta.angela.common.AngelaProperties.SKIP_UNINSTALL;
 import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 
@@ -128,7 +129,7 @@ public class Tms implements AutoCloseable {
       e.printStackTrace();
       // ignore, not installed
     }
-    if (!Boolean.parseBoolean(SKIP_UNINSTALL.getValue())) {
+    if (!SKIP_UNINSTALL.getBooleanValue()) {
       uninstall();
     }
   }
@@ -158,11 +159,10 @@ public class Tms implements AutoCloseable {
     TerracottaCommandLineEnvironment tcEnv = tmsConfigurationContext.getTerracottaCommandLineEnvironment();
 
     logger.info("starting TMS on {}", tmsHostname);
-    boolean offline = Boolean.parseBoolean(System.getProperty("offline", "false"));
 
     logger.debug("Setting up locally the extracted install to be deployed remotely");
     String kitInstallationPath = getEitherOf(KIT_INSTALLATION_DIR, KIT_INSTALLATION_PATH);
-    localKitManager.setupLocalInstall(license, kitInstallationPath, offline);
+    localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
 
     logger.info("Attempting to remotely install if distribution already exists on {}", tmsHostname);
     IgniteCallable<Boolean> callable = () -> Agent.controller.installTms(instanceId, tmsHostname, distribution, license,

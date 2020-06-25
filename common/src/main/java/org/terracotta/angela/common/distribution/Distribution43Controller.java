@@ -17,14 +17,17 @@
 
 package org.terracotta.angela.common.distribution;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.terracotta.angela.common.ClusterToolExecutionResult;
 import org.terracotta.angela.common.ConfigToolExecutionResult;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaServerInstance.TerracottaServerInstanceProcess;
+import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance;
-import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.provider.ConfigurationManager;
 import org.terracotta.angela.common.provider.TcConfigManager;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
@@ -37,9 +40,6 @@ import org.terracotta.angela.common.util.ExternalLoggers;
 import org.terracotta.angela.common.util.HostPort;
 import org.terracotta.angela.common.util.OS;
 import org.terracotta.angela.common.util.TriggeringOutputStream;
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 
@@ -56,6 +56,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static java.io.File.separator;
+import static java.util.regex.Pattern.compile;
 import static org.terracotta.angela.common.AngelaProperties.TSA_FULL_LOGGING;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_ACTIVE;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_PASSIVE;
@@ -65,8 +67,6 @@ import static org.terracotta.angela.common.topology.PackageType.SAG_INSTALLER;
 import static org.terracotta.angela.common.util.HostAndIpValidator.isValidHost;
 import static org.terracotta.angela.common.util.HostAndIpValidator.isValidIPv4;
 import static org.terracotta.angela.common.util.HostAndIpValidator.isValidIPv6;
-import static java.io.File.separator;
-import static java.util.regex.Pattern.compile;
 
 /**
  * @author Aurelien Broszniowski
@@ -74,7 +74,7 @@ import static java.util.regex.Pattern.compile;
 public class Distribution43Controller extends DistributionController {
   private final static Logger logger = LoggerFactory.getLogger(Distribution43Controller.class);
 
-  private final boolean tsaFullLogging = Boolean.parseBoolean(TSA_FULL_LOGGING.getValue());
+  private final boolean tsaFullLogging = TSA_FULL_LOGGING.getBooleanValue();
 
   Distribution43Controller(Distribution distribution) {
     super(distribution);
