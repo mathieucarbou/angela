@@ -60,7 +60,7 @@ public class RemoteKitManager extends KitManager {
     try {
       Files.createDirectories(workingDir);
 
-      logger.info("TMS should copy a separate kit install ? {}", KIT_COPY.getBooleanValue());
+      logger.info("should copy a separate kit install ? {}", KIT_COPY.getBooleanValue());
       if (areAllLocal(serversHostnames) && SKIP_KIT_COPY_LOCALHOST.getBooleanValue() && !KIT_COPY.getBooleanValue()) {
         logger.info("Skipped copying kit from {} to {}", kitInstallationPath.toAbsolutePath(), workingDir);
         if (license != null) {

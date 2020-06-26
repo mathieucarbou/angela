@@ -128,6 +128,9 @@ public class AgentController {
         terracottaInstall = kitsInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(workingDir, portAllocator));
       } else {
         kitLocation = new File(kitInstallationPath);
+        if (license !=null) {
+          license.writeToFile(kitLocation);
+        }
         Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
         try {
           Files.createDirectories(workingPath);
