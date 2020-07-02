@@ -146,7 +146,7 @@ public abstract class DistributionController {
   
   public abstract void configure(String clusterName, File kitDir, File workingDir, String licensePath, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, SecurityRootDirectory securityRootDirectory, TerracottaCommandLineEnvironment env, boolean verbose);
 
-  public abstract ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, String... arguments);
+  public abstract ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments);
 
   public abstract ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments);
 

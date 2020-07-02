@@ -138,13 +138,17 @@ public class Distribution102Controller extends DistributionController {
   }
 
   @Override
-  public ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
+  public ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Path securityDir, String... arguments) {
     List<String> command = new ArrayList<>();
     command.add(kitDir
         + separator + "tools"
         + separator + "cluster-tool"
         + separator + "bin"
         + separator + "cluster-tool" + OS.INSTANCE.getShellExtension());
+    if (securityDir != null) {
+      command.add("-srd");
+      command.add(securityDir.toString());
+    }
     command.addAll(Arrays.asList(arguments));
 
     try {

@@ -249,8 +249,19 @@ public class Distribution107Controller extends DistributionController {
   }
 
   @Override
-  public ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, String... arguments) {
-    throw new UnsupportedOperationException("Dynamic config doesn't use cluster-tool for cluster configuration");
+  public ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments) {
+    try {
+      ProcessResult processResult = new ProcessExecutor(createClusterToolCommand(kitDir, securityDir, arguments))
+          .directory(workingDir)
+          .environment(buildEnv(env))
+          .readOutput(true)
+          .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
+          .redirectErrorStream(true)
+          .execute();
+      return new ClusterToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -445,6 +456,19 @@ public class Distribution107Controller extends DistributionController {
     return command;
   }
 
+  List<String> createClusterToolCommand(File installLocation, Path securityDir, String[] arguments) {
+    List<String> command = new ArrayList<>();
+    command.add(getClusterToolExecutable(installLocation));
+    if (securityDir != null) {
+      command.add("-srd");
+      command.add(securityDir.toString());
+    }
+    command.addAll(Arrays.asList(arguments));
+
+    LOGGER.debug(" Cluster Tool command = {}", command);
+    return command;
+  }
+
   private String getConfigToolExecutable(File installLocation) {
     String execPath = "tools" + separator + "bin" + separator + "config-tool" + OS.INSTANCE.getShellExtension();
 
@@ -453,7 +477,18 @@ public class Distribution107Controller extends DistributionController {
     } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
       return installLocation.getAbsolutePath() + separator + terracottaInstallationRoot() + separator + execPath;
     }
-    throw new IllegalStateException("Can not define Config Tool Command for distribution: " + distribution);
+    throw new IllegalStateException("Can not define config tool command for distribution: " + distribution);
+  }
+
+  private String getClusterToolExecutable(File installLocation) {
+    String execPath = "tools" + separator + "bin" + separator + "cluster-tool" + OS.INSTANCE.getShellExtension();
+
+    if (distribution.getPackageType() == PackageType.KIT) {
+      return installLocation.getAbsolutePath() + separator + execPath;
+    } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
+      return installLocation.getAbsolutePath() + separator + terracottaInstallationRoot() + separator + execPath;
+    }
+    throw new IllegalStateException("Can not define cluster tool command for distribution: " + distribution);
   }
 
 
