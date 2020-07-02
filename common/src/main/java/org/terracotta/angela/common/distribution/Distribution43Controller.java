@@ -209,7 +209,7 @@ public class Distribution43Controller extends DistributionController {
   }
 
   @Override
-  public ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
+  public ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Path securityDir, String... arguments) {
     throw new UnsupportedOperationException("4.x does not have a cluster tool");
   }
 

@@ -129,7 +129,7 @@ public class TerracottaServerInstance implements Closeable {
   }
 
   public ClusterToolExecutionResult clusterTool(TerracottaCommandLineEnvironment env, String... arguments) {
-    return distributionController.invokeClusterTool(kitDir, workingDir, env, arguments);
+    return distributionController.invokeClusterTool(kitDir, workingDir, env, terracottaServer.getSecurityDir(), arguments);
   }
 
   public ConfigToolExecutionResult configTool(TerracottaCommandLineEnvironment env, String... arguments) {

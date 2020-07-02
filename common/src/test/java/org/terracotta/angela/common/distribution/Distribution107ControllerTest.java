@@ -1,7 +1,6 @@
 package org.terracotta.angela.common.distribution;
 
 import org.junit.Test;
-import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
@@ -18,7 +17,6 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -133,19 +131,42 @@ public class Distribution107ControllerTest {
   }
 
   @Test
-  public void testClusterToolCommand() {
+  public void testCreateSimpleClusterToolCommandForKit() {
     Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.KIT);
     Distribution107Controller controller = new Distribution107Controller(distribution);
-    File kitDir = new File("/");
-    File workingDir = new File("/");
-    TerracottaCommandLineEnvironment commandLineEnvironment = mock(TerracottaCommandLineEnvironment.class);
-    try {
 
-      controller.invokeClusterTool(kitDir, workingDir, commandLineEnvironment);
-      fail("Dynamic config implementation");
-    } catch (UnsupportedOperationException e) {
-      // Expected
-    }
+    final File installLocation = new File("/somedir");
+    final List<String> configToolCommand = controller.createClusterToolCommand(installLocation, null, new String[] {});
+    assertThat(configToolCommand.get(0), is(equalTo("/somedir/tools/bin/cluster-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.size(), is(1));
+  }
+
+  @Test
+  public void testCreateClusterToolWithSecurityCommandForKit() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.KIT);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
+
+    final File installLocation = new File("/somedir");
+    final Path securityDir = Paths.get("/securedir");
+    final List<String> configToolCommand = controller.createClusterToolCommand(installLocation, securityDir, new String[] {});
+    assertThat(configToolCommand.get(0), is(equalTo("/somedir/tools/bin/cluster-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.get(1), is(equalTo("-srd")));
+    assertThat(configToolCommand.get(2), is(equalTo("/securedir")));
+    assertThat(configToolCommand.size(), is(3));
+  }
+
+  @Test
+  public void testCreateSimpleClusterToolCommandForSAG() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.SAG_INSTALLER);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
+
+    final File installLocation = new File("/somedir");
+    final List<String> configToolCommand = controller.createClusterToolCommand(installLocation, null, new String[] {});
+    assertThat(configToolCommand.get(0), is(equalTo("/somedir/TerracottaDB/tools/bin/cluster-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.size(), is(1));
   }
 
   @Test
@@ -182,7 +203,7 @@ public class Distribution107ControllerTest {
 
     final File installLocation = new File("/somedir");
     final TerracottaVoter terracottaVoter = mock(TerracottaVoter.class);
-    when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList(new String[] { "9410", "9510" }));
+    when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList("9410", "9510"));
     final List<String> voterCommand = controller.startVoterCommand( installLocation, terracottaVoter);
 
     assertThat(voterCommand.get(0), is(equalTo("/somedir/voter/bin/start-tc-voter" + OS.INSTANCE.getShellExtension())));
@@ -199,7 +220,7 @@ public class Distribution107ControllerTest {
 
     final File installLocation = new File("/somedir");
     final TerracottaVoter terracottaVoter = mock(TerracottaVoter.class);
-    when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList(new String[] { "9410", "9510" }));
+    when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList("9410", "9510"));
     final List<String> voterCommand = controller.startVoterCommand( installLocation, terracottaVoter);
 
     assertThat(voterCommand.get(0), is(equalTo("/somedir/TerracottaDB/voter/bin/start-tc-voter" + OS.INSTANCE.getShellExtension())));
@@ -207,6 +228,4 @@ public class Distribution107ControllerTest {
     assertThat(voterCommand.get(2), is("9410,9510"));
     assertThat(voterCommand.size(), is(3));
   }
-
-
 }

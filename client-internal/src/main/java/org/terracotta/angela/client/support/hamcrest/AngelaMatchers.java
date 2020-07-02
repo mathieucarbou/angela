@@ -20,7 +20,7 @@ import org.hamcrest.CustomTypeSafeMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.terracotta.angela.client.support.junit.NodeOutputRule;
-import org.terracotta.angela.common.ConfigToolExecutionResult;
+import org.terracotta.angela.common.ToolExecutionResult;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -40,28 +40,28 @@ public class AngelaMatchers {
     };
   }
 
-  public static Matcher<ConfigToolExecutionResult> successful() {
-    return new CustomTypeSafeMatcher<ConfigToolExecutionResult>("successful") {
+  public static Matcher<ToolExecutionResult> successful() {
+    return new CustomTypeSafeMatcher<ToolExecutionResult>("successful") {
       @Override
-      protected boolean matchesSafely(ConfigToolExecutionResult result) {
-        return result.getExitStatus() == 0 && find(result.getOutput(), "Command successful");
+      protected boolean matchesSafely(ToolExecutionResult result) {
+        return result.getExitStatus() == 0 && find(result.getOutput(), "successful");
       }
     };
   }
 
-  public static Matcher<ConfigToolExecutionResult> containsOutput(String text) {
-    return new CustomTypeSafeMatcher<ConfigToolExecutionResult>("contains " + text) {
+  public static Matcher<ToolExecutionResult> containsOutput(String text) {
+    return new CustomTypeSafeMatcher<ToolExecutionResult>("contains " + text) {
       @Override
-      protected boolean matchesSafely(ConfigToolExecutionResult result) {
+      protected boolean matchesSafely(ToolExecutionResult result) {
         return find(result.getOutput(), text);
       }
     };
   }
 
-  public static Matcher<ConfigToolExecutionResult> containsLinesInOrderStartingWith(Collection<String> expectedLines) {
-    return new CustomTypeSafeMatcher<ConfigToolExecutionResult>("contains lines in order starting with:\n" + String.join("\n", expectedLines)) {
+  public static Matcher<ToolExecutionResult> containsLinesInOrderStartingWith(Collection<String> expectedLines) {
+    return new CustomTypeSafeMatcher<ToolExecutionResult>("contains lines in order starting with:\n" + String.join("\n", expectedLines)) {
       @Override
-      protected boolean matchesSafely(ConfigToolExecutionResult result) {
+      protected boolean matchesSafely(ToolExecutionResult result) {
         LinkedList<String> lines = new LinkedList<>(expectedLines);
         for (String out : result.getOutput()) {
           if (out.startsWith(lines.getFirst())) {
@@ -72,7 +72,7 @@ public class AngelaMatchers {
       }
 
       @Override
-      protected void describeMismatchSafely(ConfigToolExecutionResult result, Description mismatchDescription) {
+      protected void describeMismatchSafely(ToolExecutionResult result, Description mismatchDescription) {
         LinkedList<String> lines = new LinkedList<>(expectedLines);
         for (String out : result.getOutput()) {
           if (out.startsWith(lines.getFirst())) {
@@ -84,10 +84,10 @@ public class AngelaMatchers {
     };
   }
 
-  public static Matcher<ConfigToolExecutionResult> containsLinesStartingWith(Collection<String> expectedLines) {
-    return new CustomTypeSafeMatcher<ConfigToolExecutionResult>("contains lines starting with:\n" + String.join("\n", expectedLines)) {
+  public static Matcher<ToolExecutionResult> containsLinesStartingWith(Collection<String> expectedLines) {
+    return new CustomTypeSafeMatcher<ToolExecutionResult>("contains lines starting with:\n" + String.join("\n", expectedLines)) {
       @Override
-      protected boolean matchesSafely(ConfigToolExecutionResult result) {
+      protected boolean matchesSafely(ToolExecutionResult result) {
         LinkedList<String> lines = new LinkedList<>(expectedLines);
         for (String out : result.getOutput()) {
           if (lines.isEmpty()) {
@@ -100,7 +100,7 @@ public class AngelaMatchers {
       }
 
       @Override
-      protected void describeMismatchSafely(ConfigToolExecutionResult result, Description mismatchDescription) {
+      protected void describeMismatchSafely(ToolExecutionResult result, Description mismatchDescription) {
         LinkedList<String> lines = new LinkedList<>(expectedLines);
         for (String out : result.getOutput()) {
           if (lines.isEmpty()) {
@@ -114,10 +114,10 @@ public class AngelaMatchers {
     };
   }
 
-  public static Matcher<ConfigToolExecutionResult> hasExitStatus(int exitStatus) {
-    return new CustomTypeSafeMatcher<ConfigToolExecutionResult>(" exist status " + exitStatus) {
+  public static Matcher<ToolExecutionResult> hasExitStatus(int exitStatus) {
+    return new CustomTypeSafeMatcher<ToolExecutionResult>(" exist status " + exitStatus) {
       @Override
-      protected boolean matchesSafely(ConfigToolExecutionResult result) {
+      protected boolean matchesSafely(ToolExecutionResult result) {
         return result.getExitStatus() == exitStatus;
       }
     };
