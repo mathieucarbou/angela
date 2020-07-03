@@ -60,6 +60,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static java.util.EnumSet.of;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
 import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
@@ -374,19 +376,33 @@ public class Tsa implements AutoCloseable {
 
       if (topology.isNetDisruptionEnabled()) {
         Map<ServerSymbolicName, Integer> proxyTsaPorts = updateToProxiedPorts();
-        int proxyPort = proxyTsaPorts.get(terracottaServer.getServerSymbolicName());
-        IgniteCallable<ConfigToolExecutionResult> callable = () -> {
-          return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv, "set", "-s", "localhost:" + terracottaServer.getTsaPort(),
-              "-c", "stripe.1.public-hostname=localhost", "-c", "stripe.1.public-port=" + proxyPort);
-        };
-        IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
+        for (int i = 0; i < topology.getStripes().size(); ++i) {
+          List<TerracottaServer> terracottaServerList = topology.getStripes().get(i);
+          for (int j = 0; j < terracottaServerList.size(); ++j) {
+            TerracottaServer server = terracottaServerList.get(j);
+            int proxyPort = proxyTsaPorts.get(server.getServerSymbolicName());
+            int stripeId = i + 1;
+            int nodeId = j + 1;
+            String publicHostName = "stripe." + stripeId + ".node." + nodeId + ".public-hostname=" + server.getHostName();
+            String publicPort = "stripe." + stripeId + ".node." + nodeId + ".public-port=" + proxyPort;
+            IgniteCallable<ConfigToolExecutionResult> callable = () -> {
+              return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv,
+                  "set", "-s", server.getHostName() + ":" + server.getTsaPort(),
+                  "-c", publicHostName, "-c", publicPort);
+            };
+            ConfigToolExecutionResult executionResult = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
+            if (executionResult.getExitStatus() != 0) {
+              throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
+            }
+          }
+        }
       }
       return this;
     } else {
       throw new IllegalStateException();
     }
   }
-
+  
   public TerracottaServerState getState(TerracottaServer terracottaServer) {
     return IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
         () -> Agent.controller.getTsaState(instanceId, terracottaServer));
@@ -808,6 +824,25 @@ public class Tsa implements AutoCloseable {
       }
     }
 
+    // Disabling client redirection from passive to current active.
+    if (getTsaConfigurationContext().getTopology().isNetDisruptionEnabled()) {
+      for (int i = 0; i < stripes.size(); ++i) {
+        List<TerracottaServer> terracottaServerList = stripes.get(i);
+        for (int j = 0; j < terracottaServerList.size(); ++j) {
+          TerracottaServer server = terracottaServerList.get(j);
+          int stripeId = i + 1;
+          int nodeId = j + 1;
+          ConfigTool configTool = configTool(server);
+          String property = "stripe." + stripeId + ".node." + nodeId + ".tc-properties." + "l1redirect.enabled=false";
+          ConfigToolExecutionResult executionResult = configTool.executeCommand(
+              "set", "-s", server.getHostName() + ":" + server.getTsaPort(), "-c", property);
+          if (executionResult.getExitStatus() != 0) {
+            throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
+          }
+        }
+      }
+    }
+    
     return this;
   }
 
