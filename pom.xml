@@ -274,6 +274,7 @@
             <!-- The server "id" element from settings to use authentication from -->
             <serverId>sonatype-nexus-staging</serverId>
             <skipNexusStagingDeployMojo>${maven.deploy.skip}</skipNexusStagingDeployMojo>
+            <keepStagingRepositoryOnCloseRuleFailure>true</keepStagingRepositoryOnCloseRuleFailure>
           </configuration>
         </plugin>
       </plugins>
