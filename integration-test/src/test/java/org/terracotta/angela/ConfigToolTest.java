@@ -77,7 +77,7 @@ public class ConfigToolTest {
 
       try {
         configTool.executeCommand("fail");
-        fail("cluster tool should fail because the license path doesn't exist");
+        fail("config tool should fail because the option doesn't exist");
       } catch (Exception e) {
         // expected
       }
