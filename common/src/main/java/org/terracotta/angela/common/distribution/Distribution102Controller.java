@@ -157,6 +157,7 @@ public class Distribution102Controller extends DistributionController {
           .environment(buildEnv(tcEnv))
           .readOutput(true)
           .redirectErrorStream(true)
+          .exitValue(0)
           .execute();
       return new ClusterToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
     } catch (Exception e) {

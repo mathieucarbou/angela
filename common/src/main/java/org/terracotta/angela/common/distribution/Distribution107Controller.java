@@ -257,6 +257,7 @@ public class Distribution107Controller extends DistributionController {
           .readOutput(true)
           .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
           .redirectErrorStream(true)
+          .exitValue(0)
           .execute();
       return new ClusterToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
     } catch (Exception e) {
@@ -273,6 +274,7 @@ public class Distribution107Controller extends DistributionController {
           .readOutput(true)
           .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.configToolLogger).asInfo())
           .redirectErrorStream(true)
+          .exitValue(0)
           .execute();
       return new ConfigToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
     } catch (Exception e) {
