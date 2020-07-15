@@ -833,7 +833,7 @@ public class Tsa implements AutoCloseable {
           int stripeId = i + 1;
           int nodeId = j + 1;
           ConfigTool configTool = configTool(server);
-          String property = "stripe." + stripeId + ".node." + nodeId + ".tc-properties." + "l1redirect.enabled=false";
+          String property = "stripe." + stripeId + ".node." + nodeId + ".tc-properties." + "l2.l1redirect.enabled=false";
           ConfigToolExecutionResult executionResult = configTool.executeCommand(
               "set", "-s", server.getHostName() + ":" + server.getTsaPort(), "-c", property);
           if (executionResult.getExitStatus() != 0) {
