@@ -49,7 +49,7 @@ public class TcConfigManager implements ConfigurationManager {
     if (netDisruptionEnabled) {
       for (TcConfig cfg : tcConfigProvider.tcConfigs) {
         cfg.createOrUpdateTcProperty("topology.validate", "false");
-        cfg.createOrUpdateTcProperty("l1redirect.enabled", "false");
+        cfg.createOrUpdateTcProperty("l2.l1redirect.enabled", "false");
       }
     }
     return tcConfigProvider;
