@@ -25,10 +25,6 @@ import org.terracotta.angela.client.Tsa;
 import org.terracotta.angela.client.config.ConfigurationContext;
 import org.terracotta.angela.common.topology.Topology;
 
-import java.time.Duration;
-
-import static org.awaitility.Awaitility.await;
-import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.fail;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
@@ -39,14 +35,11 @@ import static org.terracotta.angela.common.topology.LicenseType.TERRACOTTA_OS;
 import static org.terracotta.angela.common.topology.PackageType.KIT;
 import static org.terracotta.angela.common.topology.Version.version;
 
-/**
- * @author Yakov Feldman
- */
 public class ConfigToolTest {
   private final static Logger logger = LoggerFactory.getLogger(ConfigToolTest.class);
 
   @Test
-  public void testFailingClusterToolCommand() throws Exception {
+  public void testFailingConfigToolCommand() throws Exception {
     ConfigurationContext configContext = customConfigurationContext()
         .tsa(tsa -> tsa
             .topology(
@@ -69,15 +62,13 @@ public class ConfigToolTest {
 
     try (ClusterFactory factory = new ClusterFactory("ConfigToolTest::testFailingClusterToolCommand", configContext)) {
       Tsa tsa = factory.tsa();
-      tsa.startAll().attachAll().activateAll();
-
-      await().atMost(Duration.ofSeconds(60)).until(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+      tsa.startAll().activateAll();
 
       ConfigTool configTool = tsa.configTool(tsa.getActive());
 
       try {
-        configTool.executeCommand("fail");
-        fail("config tool should fail because the option doesn't exist");
+        configTool.executeCommand("non-existent-command");
+        fail("Expected config tool invocation to fail as the command doesn't exist");
       } catch (Exception e) {
         // expected
       }
