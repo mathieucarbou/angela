@@ -60,8 +60,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static java.util.EnumSet.of;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.terracotta.angela.client.config.TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.SERVER_START_PREFIX;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
 import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
@@ -175,8 +174,8 @@ public class Tsa implements AutoCloseable {
         }
       }
     } else {
-      isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
-          () -> Agent.controller. installTsa(instanceId, terracottaServer,
+      IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
+          () -> Agent.controller.installTsa(instanceId, terracottaServer,
               license, localKitManager.getKitInstallationName(), distribution, topology, kitInstallationPath));
     }
   }
@@ -238,9 +237,7 @@ public class Tsa implements AutoCloseable {
       case STOPPED:
         logger.info("Creating TC server on {}", terracottaServer.getHostname());
         IgniteRunnable tsaCreator = () -> {
-          String whatFor = TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.SERVER_START_PREFIX + terracottaServer
-              .getServerSymbolicName()
-              .getSymbolicName();
+          String whatFor = SERVER_START_PREFIX + terracottaServer.getServerSymbolicName().getSymbolicName();
           TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(whatFor);
           Agent.controller.createTsa(instanceId, terracottaServer, cliEnv, Arrays.asList(startUpArgs));
         };
@@ -370,9 +367,8 @@ public class Tsa implements AutoCloseable {
       logger.info("Activating cluster from {}", terracottaServer.getHostname());
       TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
 
-      IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, () -> {
-        Agent.controller.configure(instanceId, terracottaServer, topology, null, tsaConfigurationContext.getClusterName(), null, cliEnv, false);
-      });
+      IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
+          () -> Agent.controller.configure(instanceId, terracottaServer, topology, null, tsaConfigurationContext.getClusterName(), null, cliEnv, false));
 
       if (topology.isNetDisruptionEnabled()) {
         Map<ServerSymbolicName, Integer> proxyTsaPorts = updateToProxiedPorts();

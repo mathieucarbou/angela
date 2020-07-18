@@ -61,6 +61,7 @@ public class TerracottaServer {
   private String authc;
   private boolean sslTls;
   private boolean whitelist;
+  private String clusterName;
 
   private TerracottaServer(String serverSymbolicName, String hostName) {
     this.serverSymbolicName = new ServerSymbolicName(serverSymbolicName);
@@ -185,6 +186,15 @@ public class TerracottaServer {
   public TerracottaServer whitelist(boolean whitelist) {
     this.whitelist = whitelist;
     return this;
+  }
+
+  public TerracottaServer clusterName(String clusterName) {
+    this.clusterName = clusterName;
+    return this;
+  }
+
+  public String getClusterName() {
+    return clusterName;
   }
 
   public ServerSymbolicName getServerSymbolicName() {

@@ -316,7 +316,7 @@ public class Distribution107Controller extends DistributionController {
       command.addAll(dynamicArguments);
     }
 
-    LOGGER.debug(" Create TSA command = {}", command);
+    LOGGER.info("Create TSA command: {}", command);
     return command;
   }
 
@@ -431,7 +431,12 @@ public class Distribution107Controller extends DistributionController {
       options.add(server.getProperties());
     }
 
-    LOGGER.info("Server startup options: {}", options);
+    if (server.getClusterName() != null) {
+      options.add("-N");
+      options.add(server.getClusterName());
+    }
+
+    LOGGER.debug("Server startup options: {}", options);
     return options;
   }
 
@@ -442,7 +447,7 @@ public class Distribution107Controller extends DistributionController {
     } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
       return kitLocation.getAbsolutePath() + separator + terracottaInstallationRoot() + separator + execPath;
     }
-    throw new IllegalStateException("Can not define Terracotta server Start Command for distribution: " + distribution);
+    throw new IllegalStateException("Can not define Terracotta server start command for distribution: " + distribution);
   }
 
   List<String> createConfigToolCommand(File installLocation, Path securityDir, String[] arguments) {
@@ -454,7 +459,7 @@ public class Distribution107Controller extends DistributionController {
     }
     command.addAll(Arrays.asList(arguments));
 
-    LOGGER.debug(" Config Tool command = {}", command);
+    LOGGER.info("Config tool command: {}", command);
     return command;
   }
 
@@ -467,7 +472,7 @@ public class Distribution107Controller extends DistributionController {
     }
     command.addAll(Arrays.asList(arguments));
 
-    LOGGER.debug(" Cluster Tool command = {}", command);
+    LOGGER.info("Cluster tool command: {}", command);
     return command;
   }
 
@@ -497,7 +502,7 @@ public class Distribution107Controller extends DistributionController {
   List<String> startTmsCommand(File installLocation) {
     List<String> command = new ArrayList<>();
     command.add(getStartTmsExecutable(installLocation));
-    LOGGER.debug(" Start TMS command = {}", command);
+    LOGGER.info("Start TMS command: {}", command);
     return command;
   }
 
@@ -508,7 +513,7 @@ public class Distribution107Controller extends DistributionController {
     } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
       return installLocation.getAbsolutePath() + separator + terracottaInstallationRoot() + separator + execPath;
     }
-    throw new IllegalStateException("Can not define TMS Start Command for distribution: " + distribution);
+    throw new IllegalStateException("Can not define TMS start command for distribution: " + distribution);
   }
 
   List<String> startVoterCommand(File installLocation, TerracottaVoter terracottaVoter) {
@@ -516,7 +521,7 @@ public class Distribution107Controller extends DistributionController {
     command.add(getStartVoterExecutable(installLocation));
     command.add("-s");
     command.add(join(",", terracottaVoter.getHostPorts()));
-    LOGGER.info(" Start VOTER command = {}", command);
+    LOGGER.info("Start voter command: {}", command);
     return command;
   }
 
@@ -527,7 +532,7 @@ public class Distribution107Controller extends DistributionController {
     } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
       return installLocation.getAbsolutePath() + separator + terracottaInstallationRoot() + separator + execPath;
     }
-    throw new IllegalStateException("Can not define Voter Start Command for distribution: " + distribution);
+    throw new IllegalStateException("Can not define voter start command for distribution: " + distribution);
   }
 
   @Override
