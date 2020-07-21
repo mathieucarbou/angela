@@ -369,33 +369,90 @@ public class Tsa implements AutoCloseable {
 
       IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
           () -> Agent.controller.configure(instanceId, terracottaServer, topology, null, tsaConfigurationContext.getClusterName(), null, cliEnv, false));
-
-      if (topology.isNetDisruptionEnabled()) {
-        Map<ServerSymbolicName, Integer> proxyTsaPorts = updateToProxiedPorts();
-        for (int i = 0; i < topology.getStripes().size(); ++i) {
-          List<TerracottaServer> terracottaServerList = topology.getStripes().get(i);
-          for (int j = 0; j < terracottaServerList.size(); ++j) {
-            TerracottaServer server = terracottaServerList.get(j);
-            int proxyPort = proxyTsaPorts.get(server.getServerSymbolicName());
-            int stripeId = i + 1;
-            int nodeId = j + 1;
-            String publicHostName = "stripe." + stripeId + ".node." + nodeId + ".public-hostname=" + server.getHostName();
-            String publicPort = "stripe." + stripeId + ".node." + nodeId + ".public-port=" + proxyPort;
-            IgniteCallable<ConfigToolExecutionResult> callable = () -> {
-              return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv,
-                  "set", "-s", server.getHostName() + ":" + server.getTsaPort(),
-                  "-c", publicHostName, "-c", publicPort);
-            };
-            ConfigToolExecutionResult executionResult = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
-            if (executionResult.getExitStatus() != 0) {
-              throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
-            }
-          }
-        }
-      }
       return this;
     } else {
-      throw new IllegalStateException();
+      throw new IllegalStateException("Topology doesn't belong to dynamic cluster");
+    }
+  }
+
+  public void setClientToServerDisruptionLinks() {
+    Topology topology = tsaConfigurationContext.getTopology();
+    ConfigurationManager configurationManager = topology.getConfigurationManager();
+    if (topology.isNetDisruptionEnabled() && (configurationManager instanceof DynamicConfigManager)) {
+      TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
+      Map<ServerSymbolicName, Integer> proxyTsaPorts = updateToProxiedPorts();
+      List<String> publicHostNames = new ArrayList<>();
+      List<String> publicPorts = new ArrayList<>();
+      for (int i = 0; i < topology.getStripes().size(); ++i) {
+        List<TerracottaServer> terracottaServerList = topology.getStripes().get(i);
+        for (int j = 0; j < terracottaServerList.size(); ++j) {
+          TerracottaServer server = terracottaServerList.get(j);
+          int proxyPort = proxyTsaPorts.get(server.getServerSymbolicName());
+          int stripeId = i + 1;
+          int nodeId = j + 1;
+          String publicHostName = "stripe." + stripeId + ".node." + nodeId + ".public-hostname=" + server.getHostName();
+          String publicPort = "stripe." + stripeId + ".node." + nodeId + ".public-port=" + proxyPort;
+          publicHostNames.add(publicHostName);
+          publicPorts.add(publicPort);
+        }
+      }
+      TerracottaServer terracottaServer = topology.getServer(0, 0);
+      List<String> arguments = new ArrayList<>();
+      arguments.add("set");
+      arguments.add("-s");
+      arguments.add(terracottaServer.getHostname() + ":" + terracottaServer.getTsaPort());
+      for (int i = 0; i < publicHostNames.size(); ++i) {
+        arguments.add("-c");
+        arguments.add(publicHostNames.get(i));
+        arguments.add("-c");
+        arguments.add(publicPorts.get(i));
+      }
+      IgniteCallable<ConfigToolExecutionResult> callable = () -> {
+        return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv, arguments.toArray(new String[0]));
+      };
+      ConfigToolExecutionResult executionResult = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
+      if (executionResult.getExitStatus() != 0) {
+        throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
+      }
+    } else {
+      throw new IllegalStateException("Either the network disruption is not enabled for the topology or " +
+          "the topology doesn't belong to dynamic cluster");
+    }
+  }
+
+  public void setServerToServerDisruptionLinks(int stripeId, int size) {
+    Topology topology = tsaConfigurationContext.getTopology();
+    ConfigurationManager configurationManager = topology.getConfigurationManager();
+    if (topology.isNetDisruptionEnabled() && (configurationManager instanceof DynamicConfigManager)) {
+      TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
+      List<TerracottaServer> stripeServerList = getTsaConfigurationContext().getTopology().getStripes().get(stripeId - 1);
+      for (int j = 0; j < size; ++j) {
+        TerracottaServer server = stripeServerList.get(j);
+        Map<ServerSymbolicName, Integer> proxyGroupPortMapping = getProxyGroupPortsForServer(server);
+        int nodeId = j + 1;
+        StringBuilder propertyBuilder = new StringBuilder();
+        propertyBuilder.append("stripe." + stripeId + ".node." + nodeId + ".tc-properties.test-proxy-group-port=");
+        for (Map.Entry<ServerSymbolicName, Integer> entry : proxyGroupPortMapping.entrySet()) {
+          propertyBuilder.append(entry.getKey().getSymbolicName());
+          propertyBuilder.append("->");
+          propertyBuilder.append(entry.getValue());
+          propertyBuilder.append("#");
+        }
+        propertyBuilder.deleteCharAt(propertyBuilder.lastIndexOf("#"));
+
+        IgniteCallable<ConfigToolExecutionResult> callable = () -> {
+          return Agent.controller.configTool(this.instanceId, server, cliEnv,
+              "set", "-s", server.getHostName() + ":" + server.getTsaPort(),
+              "-c", propertyBuilder.toString());
+        };
+        ConfigToolExecutionResult executionResult = IgniteClientHelper.executeRemotely(ignite, server.getHostname(), ignitePort, callable);
+        if (executionResult.getExitStatus() != 0) {
+          throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
+        }
+      }
+    } else {
+      throw new IllegalStateException("Either the network disruption is not enabled for the topology or " +
+          "the topology doesn't belong to dynamic cluster");
     }
   }
   
@@ -837,6 +894,10 @@ public class Tsa implements AutoCloseable {
           }
         }
       }
+      for (int i = 1; i <= stripes.size(); ++i) {
+        setServerToServerDisruptionLinks(i, stripes.get(i - 1).size());
+      }
+      setClientToServerDisruptionLinks();
     }
     
     return this;
