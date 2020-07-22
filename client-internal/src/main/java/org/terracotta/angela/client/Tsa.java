@@ -432,6 +432,7 @@ public class Tsa implements AutoCloseable {
         int nodeId = j + 1;
         StringBuilder propertyBuilder = new StringBuilder();
         propertyBuilder.append("stripe." + stripeId + ".node." + nodeId + ".tc-properties.test-proxy-group-port=");
+        propertyBuilder.append("\"");
         for (Map.Entry<ServerSymbolicName, Integer> entry : proxyGroupPortMapping.entrySet()) {
           propertyBuilder.append(entry.getKey().getSymbolicName());
           propertyBuilder.append("->");
@@ -439,7 +440,8 @@ public class Tsa implements AutoCloseable {
           propertyBuilder.append("#");
         }
         propertyBuilder.deleteCharAt(propertyBuilder.lastIndexOf("#"));
-
+        propertyBuilder.append("\"");
+        
         IgniteCallable<ConfigToolExecutionResult> callable = () -> {
           return Agent.controller.configTool(this.instanceId, server, cliEnv,
               "set", "-s", server.getHostName() + ":" + server.getTsaPort(),
