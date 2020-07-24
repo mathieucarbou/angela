@@ -203,27 +203,31 @@ public class DisruptionController implements AutoCloseable {
 
   public Map<ServerSymbolicName, Integer> updateTsaPortsWithProxy(Topology topology, PortAllocator portAllocator) {
     Map<ServerSymbolicName, Integer> proxyMap = new HashMap<>();
-    if (DISRUPTION_PROVIDER.isProxyBased()) {
-      ConfigurationManager configurationProvider = topology.getConfigurationManager();
-      if (configurationProvider instanceof TcConfigManager) {
-        TcConfigManager tcConfigProvider = (TcConfigManager) configurationProvider;
-        List<TcConfig> configs = tcConfigProvider.getTcConfigs();
-        for (TcConfig config : configs) {
-          TcConfig copy = TcConfig.copy(config);
-          proxyTsaPorts.putAll(copy.retrieveTsaPorts(true, portAllocator));
+    if (proxyTsaPorts.isEmpty()) {
+      if (DISRUPTION_PROVIDER.isProxyBased()) {
+        ConfigurationManager configurationProvider = topology.getConfigurationManager();
+        if (configurationProvider instanceof TcConfigManager) {
+          TcConfigManager tcConfigProvider = (TcConfigManager) configurationProvider;
+          List<TcConfig> configs = tcConfigProvider.getTcConfigs();
+          for (TcConfig config : configs) {
+            TcConfig copy = TcConfig.copy(config);
+            proxyTsaPorts.putAll(copy.retrieveTsaPorts(true, portAllocator));
+            proxyMap.putAll(proxyTsaPorts);
+          }
+        } else {
+          DynamicConfigManager dynamicConfigManager = (DynamicConfigManager) configurationProvider;
+          List<TerracottaServer> servers = dynamicConfigManager.getServers();
+          PortAllocator.PortReservation reservation = portAllocator.reserve(servers.size());
+          for (TerracottaServer terracottaServer : servers) {
+            proxyTsaPorts.put(terracottaServer.getServerSymbolicName(), reservation.next());
+          }
           proxyMap.putAll(proxyTsaPorts);
         }
-      } else {
-        DynamicConfigManager dynamicConfigManager = (DynamicConfigManager) configurationProvider;
-        List<TerracottaServer> servers = dynamicConfigManager.getServers();
-        PortAllocator.PortReservation reservation = portAllocator.reserve(servers.size());
-        for (TerracottaServer terracottaServer : servers) {
-          proxyTsaPorts.put(terracottaServer.getServerSymbolicName(), reservation.next());
-        }
-        proxyMap.putAll(proxyTsaPorts);
+        ClientToServerDisruptor newDisruptor = new ClientToServerDisruptor(topology, existingDisruptors::remove, proxyTsaPorts);
+        existingDisruptors.add(newDisruptor);
       }
-      ClientToServerDisruptor newDisruptor = new ClientToServerDisruptor(topology, existingDisruptors::remove, proxyTsaPorts);
-      existingDisruptors.add(newDisruptor);
+    } else {
+      proxyMap.putAll(proxyTsaPorts);
     }
     return proxyMap;
   }

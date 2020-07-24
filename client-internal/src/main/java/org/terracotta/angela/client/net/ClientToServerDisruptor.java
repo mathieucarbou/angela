@@ -97,14 +97,19 @@ public class ClientToServerDisruptor implements Disruptor {
     }
 
     LOGGER.debug("undisrupting client to servers");
-    for (Disruptor link : links.values()) {
-      link.undisrupt();
-    }
+    undisrupt(links.keySet());
     state = DisruptorState.UNDISRUPTED;
   }
 
+  public void undisrupt(Collection<ServerSymbolicName> servers) {
+    for (ServerSymbolicName server : servers) {
+      links.get(server).undisrupt();
+    }
+    state = DisruptorState.UNDISRUPTED;
+  }
+  
   @Override
-  public void close() throws Exception {
+  public void close() {
     if (state == DisruptorState.DISRUPTED) {
       undisrupt();
     }
