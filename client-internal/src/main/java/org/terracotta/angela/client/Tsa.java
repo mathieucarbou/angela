@@ -375,42 +375,45 @@ public class Tsa implements AutoCloseable {
     }
   }
 
-  public void setClientToServerDisruptionLinks() {
+  public void setClientToServerDisruptionLinks(TerracottaServer terracottaServer) {
     Topology topology = tsaConfigurationContext.getTopology();
     ConfigurationManager configurationManager = topology.getConfigurationManager();
     if (topology.isNetDisruptionEnabled() && (configurationManager instanceof DynamicConfigManager)) {
       TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
-      Map<ServerSymbolicName, Integer> proxyTsaPorts = updateToProxiedPorts();
-      List<String> publicHostNames = new ArrayList<>();
-      List<String> publicPorts = new ArrayList<>();
-      for (int i = 0; i < topology.getStripes().size(); ++i) {
-        List<TerracottaServer> terracottaServerList = topology.getStripes().get(i);
-        for (int j = 0; j < terracottaServerList.size(); ++j) {
-          TerracottaServer server = terracottaServerList.get(j);
-          int proxyPort = proxyTsaPorts.get(server.getServerSymbolicName());
-          int stripeId = i + 1;
-          int nodeId = j + 1;
-          String publicHostName = "stripe." + stripeId + ".node." + nodeId + ".public-hostname=" + server.getHostName();
-          String publicPort = "stripe." + stripeId + ".node." + nodeId + ".public-port=" + proxyPort;
-          publicHostNames.add(publicHostName);
-          publicPorts.add(publicPort);
-        }
-      }
-      TerracottaServer terracottaServer = topology.getServer(0, 0);
+      // Disabling client redirection from passive to current active.
       List<String> arguments = new ArrayList<>();
+      String property = "stripe.1.node.1.tc-properties." + "l2.l1redirect.enabled=false";
       arguments.add("set");
       arguments.add("-s");
       arguments.add(terracottaServer.getHostname() + ":" + terracottaServer.getTsaPort());
-      for (int i = 0; i < publicHostNames.size(); ++i) {
-        arguments.add("-c");
-        arguments.add(publicHostNames.get(i));
-        arguments.add("-c");
-        arguments.add(publicPorts.get(i));
-      }
+      arguments.add("-c");
+      arguments.add(property);
       IgniteCallable<ConfigToolExecutionResult> callable = () -> {
         return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv, arguments.toArray(new String[0]));
       };
       ConfigToolExecutionResult executionResult = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
+      if (executionResult.getExitStatus() != 0) {
+        throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
+      }
+
+      // Creating disruption links for client to server disruption
+      Map<ServerSymbolicName, Integer> proxyMap = updateToProxiedPorts();
+      int proxyPort = proxyMap.get(terracottaServer.getServerSymbolicName());
+      String publicHostName = "stripe.1.node.1.public-hostname=" + terracottaServer.getHostName();
+      String publicPort = "stripe.1.node.1.public-port=" + proxyPort;
+
+      List<String> args = new ArrayList<>();
+      args.add("set");
+      args.add("-s");
+      args.add(terracottaServer.getHostname() + ":" + terracottaServer.getTsaPort());
+      args.add("-c");
+      args.add(publicHostName);
+      args.add("-c");
+      args.add(publicPort);
+      callable = () -> {
+        return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv, args.toArray(new String[0]));
+      };
+      executionResult = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
       if (executionResult.getExitStatus() != 0) {
         throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
       }
@@ -834,7 +837,13 @@ public class Tsa implements AutoCloseable {
   }
 
   public Tsa attachAll() {
-    List<List<TerracottaServer>> stripes = tsaConfigurationContext.getTopology().getStripes();
+    Topology topology = tsaConfigurationContext.getTopology();
+    if (topology.isNetDisruptionEnabled()) {
+      for (TerracottaServer terracottaServer : topology.getServers()) {
+        setClientToServerDisruptionLinks(terracottaServer);
+      }
+    }
+    List<List<TerracottaServer>> stripes = topology.getStripes();
 
     for (List<TerracottaServer> stripe : stripes) {
       if (stripe.size() > 1) {
@@ -878,30 +887,15 @@ public class Tsa implements AutoCloseable {
         }
       }
     }
-
-    // Disabling client redirection from passive to current active.
-    if (getTsaConfigurationContext().getTopology().isNetDisruptionEnabled()) {
-      for (int i = 0; i < stripes.size(); ++i) {
-        List<TerracottaServer> terracottaServerList = stripes.get(i);
-        for (int j = 0; j < terracottaServerList.size(); ++j) {
-          TerracottaServer server = terracottaServerList.get(j);
-          int stripeId = i + 1;
-          int nodeId = j + 1;
-          ConfigTool configTool = configTool(server);
-          String property = "stripe." + stripeId + ".node." + nodeId + ".tc-properties." + "l2.l1redirect.enabled=false";
-          ConfigToolExecutionResult executionResult = configTool.executeCommand(
-              "set", "-s", server.getHostName() + ":" + server.getTsaPort(), "-c", property);
-          if (executionResult.getExitStatus() != 0) {
-            throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
-          }
+    
+    if (topology.isNetDisruptionEnabled()) {
+      for (int i = 1; i <= stripes.size(); ++i) {
+        if (stripes.get(i - 1).size() > 1) {
+          setServerToServerDisruptionLinks(i, stripes.get(i - 1).size());
         }
       }
-      for (int i = 1; i <= stripes.size(); ++i) {
-        setServerToServerDisruptionLinks(i, stripes.get(i - 1).size());
-      }
-      setClientToServerDisruptionLinks();
     }
-    
+
     return this;
   }
 
