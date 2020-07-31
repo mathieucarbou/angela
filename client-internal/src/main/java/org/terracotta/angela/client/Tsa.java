@@ -593,15 +593,22 @@ public class Tsa implements AutoCloseable {
     return new RemoteFolder(ignite, terracottaServer.getHostname(), ignitePort, path, root);
   }
 
+  public RemoteFolder browseFromKitLocation(TerracottaServer terracottaServer, String relativePath) {
+    String kitLocation = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
+                                                     () -> Agent.controller.getTsaKitLocation(instanceId, terracottaServer));
+    return new RemoteFolder(ignite, terracottaServer.getHostname(), ignitePort, kitLocation, relativePath);
+  }
+
   public void uploadPlugin(File localPluginFile) {
     List<Exception> exceptions = new ArrayList<>();
 
     Topology topology = tsaConfigurationContext.getTopology();
     for (TerracottaServer server : topology.getServers()) {
       try {
-        browse(server, topology.getDistribution()
-            .createDistributionController()
-            .pluginJarsRootFolderName(topology.getDistribution())).upload(localPluginFile);
+        browseFromKitLocation(
+            server,
+            topology.getDistribution().createDistributionController().pluginJarsRootFolderName(topology.getDistribution())
+        ).upload(localPluginFile);
       } catch (IOException ioe) {
         exceptions.add(ioe);
       }
