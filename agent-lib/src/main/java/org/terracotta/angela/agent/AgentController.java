@@ -161,6 +161,15 @@ public class AgentController {
     return terracottaInstall.getInstallLocation(terracottaServer).getPath();
   }
 
+  public String getTsaKitLocation(InstanceId instanceId, TerracottaServer terracottaServer) {
+    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaServerInstance terracottaServerInstance = terracottaInstall.getTerracottaServerInstance(terracottaServer);
+    if (terracottaServerInstance == null) {
+      throw new IllegalStateException("Server " + terracottaServer + " has not been installed");
+    }
+    return terracottaInstall.getKitLocation(terracottaServer).getPath();
+  }
+
   public String getTsaLicensePath(InstanceId instanceId, TerracottaServer terracottaServer) {
     TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
     if (terracottaInstall == null) {

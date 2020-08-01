@@ -106,7 +106,7 @@ public class BrowseTest {
       tsa.uploadPlugin(new File(getClass().getResource("/keep-this-file-empty.txt").getFile()));
 
       for (TerracottaServer server : tsa.getTsaConfigurationContext().getTopology().getServers()) {
-        RemoteFolder remoteFolder = tsa.browse(server, "server/plugins/lib");
+        RemoteFolder remoteFolder = tsa.browseFromKitLocation(server, "server/plugins/lib");
         remoteFolder.list().forEach(System.out::println);
         Optional<RemoteFile> remoteFile = remoteFolder.list().stream().filter(f -> f.getName().equals("keep-this-file-empty.txt")).findFirst();
         assertThat(remoteFile.isPresent(), is(true));
