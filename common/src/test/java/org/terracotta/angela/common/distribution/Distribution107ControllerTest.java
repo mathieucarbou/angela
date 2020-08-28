@@ -41,7 +41,7 @@ public class Distribution107ControllerTest {
     final List<String> args = new ArrayList<>();
     final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, args);
 
-    assertThat(tsaCommand.get(0), is(equalTo("/somedir/server/bin/start-tc-server" + OS.INSTANCE.getShellExtension())));
+    assertThat(tsaCommand.get(0), is(equalTo(new File("/somedir/server/bin/start-tc-server").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(tsaCommand.get(1), is(equalTo("-n")));
     assertThat(tsaCommand.get(2), is(equalTo("Server1")));
     assertThat(tsaCommand.get(3), is(equalTo("-s")));
@@ -64,7 +64,7 @@ public class Distribution107ControllerTest {
     final List<String> args = new ArrayList<>();
     final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, args);
 
-    assertThat(tsaCommand.get(0), is(equalTo("/somedir/TerracottaDB/server/bin/start-tc-server" + OS.INSTANCE.getShellExtension())));
+    assertThat(tsaCommand.get(0), is(equalTo(new File("/somedir/TerracottaDB/server/bin/start-tc-server").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(tsaCommand.get(1), is(equalTo("-n")));
     assertThat(tsaCommand.get(2), is(equalTo("Server1")));
     assertThat(tsaCommand.get(3), is(equalTo("-s")));
@@ -80,7 +80,7 @@ public class Distribution107ControllerTest {
 
     final File installLocation = new File("/somedir");
     final List<String> configToolCommand = controller.createConfigToolCommand(installLocation, null, new String[] {});
-    assertThat(configToolCommand.get(0), is(equalTo("/somedir/tools/bin/config-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.get(0), is(equalTo(new File("/somedir/tools/bin/config-tool").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(configToolCommand.size(), is(1));
   }
 
@@ -96,7 +96,7 @@ public class Distribution107ControllerTest {
         "-c", "stripe.1.public-hostname=localhost", "-c", "stripe.1.public-port=9411"
     };
     final List<String> configToolCommand = controller.createConfigToolCommand(installLocation, null, arguments);
-    assertThat(configToolCommand.get(0), is(equalTo("/somedir/tools/bin/config-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.get(0), is(equalTo(new File("/somedir/tools/bin/config-tool").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     for (int i = 0; i < arguments.length; i++) {
       assertThat(configToolCommand.get(i + 1), is(arguments[i]));
     }
@@ -112,9 +112,9 @@ public class Distribution107ControllerTest {
     final File installLocation = new File("/somedir");
     final Path securityDir = Paths.get("/securedir");
     final List<String> configToolCommand = controller.createConfigToolCommand(installLocation, securityDir, new String[] {});
-    assertThat(configToolCommand.get(0), is(equalTo("/somedir/tools/bin/config-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.get(0), is(equalTo(new File("/somedir/tools/bin/config-tool").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(configToolCommand.get(1), is(equalTo("-srd")));
-    assertThat(configToolCommand.get(2), is(equalTo("/securedir")));
+    assertThat(configToolCommand.get(2), is(equalTo(securityDir.toString())));
     assertThat(configToolCommand.size(), is(3));
   }
 
@@ -126,7 +126,7 @@ public class Distribution107ControllerTest {
 
     final File installLocation = new File("/somedir");
     final List<String> configToolCommand = controller.createConfigToolCommand(installLocation, null, new String[] {});
-    assertThat(configToolCommand.get(0), is(equalTo("/somedir/TerracottaDB/tools/bin/config-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.get(0), is(equalTo(new File("/somedir/TerracottaDB/tools/bin/config-tool").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(configToolCommand.size(), is(1));
   }
 
@@ -138,7 +138,7 @@ public class Distribution107ControllerTest {
 
     final File installLocation = new File("/somedir");
     final List<String> configToolCommand = controller.createClusterToolCommand(installLocation, null, new String[] {});
-    assertThat(configToolCommand.get(0), is(equalTo("/somedir/tools/bin/cluster-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.get(0), is(equalTo(new File("/somedir/tools/bin/cluster-tool").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(configToolCommand.size(), is(1));
   }
 
@@ -151,9 +151,9 @@ public class Distribution107ControllerTest {
     final File installLocation = new File("/somedir");
     final Path securityDir = Paths.get("/securedir");
     final List<String> configToolCommand = controller.createClusterToolCommand(installLocation, securityDir, new String[] {});
-    assertThat(configToolCommand.get(0), is(equalTo("/somedir/tools/bin/cluster-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.get(0), is(equalTo(new File("/somedir/tools/bin/cluster-tool").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(configToolCommand.get(1), is(equalTo("-srd")));
-    assertThat(configToolCommand.get(2), is(equalTo("/securedir")));
+    assertThat(configToolCommand.get(2), is(equalTo(securityDir.toString())));
     assertThat(configToolCommand.size(), is(3));
   }
 
@@ -165,7 +165,7 @@ public class Distribution107ControllerTest {
 
     final File installLocation = new File("/somedir");
     final List<String> configToolCommand = controller.createClusterToolCommand(installLocation, null, new String[] {});
-    assertThat(configToolCommand.get(0), is(equalTo("/somedir/TerracottaDB/tools/bin/cluster-tool" + OS.INSTANCE.getShellExtension())));
+    assertThat(configToolCommand.get(0), is(equalTo(new File("/somedir/TerracottaDB/tools/bin/cluster-tool").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(configToolCommand.size(), is(1));
   }
 
@@ -178,7 +178,7 @@ public class Distribution107ControllerTest {
     final File installLocation = new File("/somedir");
     final List<String> tsaCommand = controller.startTmsCommand( installLocation);
 
-    assertThat(tsaCommand.get(0), is(equalTo("/somedir/tools/management/bin/start" + OS.INSTANCE.getShellExtension())));
+    assertThat(tsaCommand.get(0), is(equalTo(new File("/somedir/tools/management/bin/start").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(tsaCommand.size(), is(1));
   }
 
@@ -191,7 +191,7 @@ public class Distribution107ControllerTest {
     final File installLocation = new File("/somedir");
     final List<String> tsaCommand = controller.startTmsCommand( installLocation);
 
-    assertThat(tsaCommand.get(0), is(equalTo("/somedir/TerracottaDB/tools/management/bin/start" + OS.INSTANCE.getShellExtension())));
+    assertThat(tsaCommand.get(0), is(equalTo(new File("/somedir/TerracottaDB/tools/management/bin/start").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(tsaCommand.size(), is(1));
   }
 
@@ -206,7 +206,7 @@ public class Distribution107ControllerTest {
     when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList("9410", "9510"));
     final List<String> voterCommand = controller.startVoterCommand( installLocation, terracottaVoter);
 
-    assertThat(voterCommand.get(0), is(equalTo("/somedir/voter/bin/start-tc-voter" + OS.INSTANCE.getShellExtension())));
+    assertThat(voterCommand.get(0), is(equalTo(new File("/somedir/voter/bin/start-tc-voter").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(voterCommand.get(1), is("-s"));
     assertThat(voterCommand.get(2), is("9410,9510"));
     assertThat(voterCommand.size(), is(3));
@@ -223,7 +223,7 @@ public class Distribution107ControllerTest {
     when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList("9410", "9510"));
     final List<String> voterCommand = controller.startVoterCommand( installLocation, terracottaVoter);
 
-    assertThat(voterCommand.get(0), is(equalTo("/somedir/TerracottaDB/voter/bin/start-tc-voter" + OS.INSTANCE.getShellExtension())));
+    assertThat(voterCommand.get(0), is(equalTo(new File("/somedir/TerracottaDB/voter/bin/start-tc-voter").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(voterCommand.get(1), is("-s"));
     assertThat(voterCommand.get(2), is("9410,9510"));
     assertThat(voterCommand.size(), is(3));
