@@ -526,7 +526,12 @@ public class Distribution107Controller extends DistributionController {
   }
 
   private String getStartVoterExecutable(File installLocation) {
-    String execPath = "voter" + separator + "bin" + separator + "start-tc-voter" + OS.INSTANCE.getShellExtension();
+    String execPath =
+        "tools" + separator + "voter" + separator + "bin" + separator + "start-tc-voter" + OS.INSTANCE.getShellExtension();
+    if (distribution.getLicenseType().isOpenSource()) {
+      //TODO: remove this once voter location in OSS kit fixed
+      execPath = "voter" + separator + "bin" + separator + "start-tc-voter" + OS.INSTANCE.getShellExtension();
+    }
     if (distribution.getPackageType() == PackageType.KIT) {
       return installLocation.getAbsolutePath() + separator + execPath;
     } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
