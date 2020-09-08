@@ -17,7 +17,6 @@
 
 package org.terracotta.angela.agent.kit;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.Agent;
@@ -25,6 +24,7 @@ import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.util.DirectoryUtils;
+import org.terracotta.angela.common.util.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -94,7 +94,7 @@ public class RemoteKitManager extends KitManager {
   }
 
   public void deleteInstall(File installLocation) throws IOException {
-    logger.info("deleting installation in {}", installLocation.getAbsolutePath());
-    FileUtils.deleteDirectory(installLocation);
+    logger.info("Deleting installation in {}", installLocation.getAbsolutePath());
+    FileUtils.deleteDirectory(installLocation.toPath());
   }
 }

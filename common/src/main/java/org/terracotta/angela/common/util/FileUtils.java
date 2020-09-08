@@ -56,4 +56,8 @@ public class FileUtils {
       throw new UncheckedIOException(ioe);
     }
   }
+
+  public static void deleteDirectory(Path file) throws IOException {
+    org.terracotta.utilities.io.Files.deleteTree(file);
+  }
 }
