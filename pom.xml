@@ -41,23 +41,23 @@
     <java.version>1.8</java.version>
     <maven.compiler.target>1.8</maven.compiler.target>
     <maven.compiler.source>1.8</maven.compiler.source>
-    <terracotta-utilities.version>0.0.5</terracotta-utilities.version>
+    <terracotta-utilities.version>0.0.6</terracotta-utilities.version>
 
     <!-- Third-party dependencies -->
-    <ignite.version>2.8.0</ignite.version>
-    <json-path.version>3.3.0</json-path.version>
+    <ignite.version>2.8.1</ignite.version>
+    <json-path.version>4.3.1</json-path.version>
     <hamcrest.version>1.3</hamcrest.version>
     <junit.version>4.12</junit.version>
     <slf4j-api.version>1.7.25</slf4j-api.version>
-    <sshj.version>0.27.0</sshj.version>
-    <awaitility.version>4.0.1</awaitility.version>
-    <commons-io.version>2.6</commons-io.version>
-    <commons-compress.version>1.19</commons-compress.version>
+    <sshj.version>0.30.0</sshj.version>
+    <awaitility.version>4.0.3</awaitility.version>
+    <commons-io.version>2.7</commons-io.version>
+    <commons-compress.version>1.20</commons-compress.version>
     <zt-process-killer.version>1.10</zt-process-killer.version>
-    <zt-exec.version>1.11</zt-exec.version>
+    <zt-exec.version>1.12</zt-exec.version>
     <logback-classic.version>1.2.3</logback-classic.version>
     <netcrusher-core.version>0.10</netcrusher-core.version>
-    <jaxb-runtime.version>2.3.2</jaxb-runtime.version>
+    <jaxb-runtime.version>2.3.3</jaxb-runtime.version>
   </properties>
 
   <modules>
