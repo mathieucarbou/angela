@@ -19,7 +19,7 @@ package org.terracotta.angela.agent.kit;
 
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.topology.PackageType;
-import org.terracotta.angela.common.util.DirectoryUtils;
+import org.terracotta.angela.common.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +64,7 @@ public abstract class KitManager {
     }
 
     Path sagOrKitDir = ROOT_DIR.resolve(packageType == SAG_INSTALLER ? "sag" : "kits");
-    DirectoryUtils.createAndValidateDir(sagOrKitDir);
+    FileUtils.createAndValidateDir(sagOrKitDir);
     return sagOrKitDir.resolve(distribution.getVersion().getVersion(true));
   }
 
@@ -90,7 +90,7 @@ public abstract class KitManager {
 
     if (!offline && distribution.getVersion().isSnapshot() && timeSinceLastModified > STALE_SNAPSHOT_LIMIT_HOURS * 60 * 60 * 1000) {
       logger.info("Mode is online, distribution is snapshot, and {} is older than {} hours", localInstallerFile.getFileName(), STALE_SNAPSHOT_LIMIT_HOURS);
-      DirectoryUtils.deleteQuietly(localInstallerFile.getParent());
+      FileUtils.deleteQuietly(localInstallerFile.getParent());
       return false;
     }
 
@@ -107,7 +107,7 @@ public abstract class KitManager {
     } catch (NoSuchFileException nsfe) {
       // no MD5 file? let's consider the archive corrupt
       logger.warn("{} does not have corresponding {} secure hash file on disk, considering it corrupt", localInstallerFile, md5File);
-      DirectoryUtils.deleteQuietly(localInstallerFile.getParent());
+      FileUtils.deleteQuietly(localInstallerFile.getParent());
       return false;
     } catch (IOException ioe) {
       throw new RuntimeException("Error reading " + md5File, ioe);
@@ -131,7 +131,7 @@ public abstract class KitManager {
       if (!localInstallerFileHash.equalsIgnoreCase(md5FileHash)) {
         // MD5 does not match? let's consider the archive corrupt
         logger.warn("{} secure hash does not match the contents of {} secure hash file on disk, considering it corrupt", localInstallerFile, md5File);
-        DirectoryUtils.deleteQuietly(localInstallerFile.getParent());
+        FileUtils.deleteQuietly(localInstallerFile.getParent());
         return false;
       }
     } catch (NoSuchAlgorithmException nsae) {

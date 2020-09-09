@@ -24,7 +24,7 @@ import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.topology.LicenseType;
 import org.terracotta.angela.common.topology.PackageType;
 import org.terracotta.angela.common.topology.Version;
-import org.terracotta.angela.common.util.DirectoryUtils;
+import org.terracotta.angela.common.util.FileUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -154,7 +154,7 @@ public abstract class KitResolver {
     } catch (IOException e) {
       // messed up download -> delete it
       logger.debug("Deleting: " + dest.getParent() + " dir as it's messed up");
-      DirectoryUtils.deleteQuietly(dest.getParent());
+      FileUtils.deleteQuietly(dest.getParent());
       throw new UncheckedIOException(e);
     }
   }
