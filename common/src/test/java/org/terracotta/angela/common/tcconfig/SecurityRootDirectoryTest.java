@@ -17,11 +17,9 @@
 
 package org.terracotta.angela.common.tcconfig;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -32,9 +30,10 @@ import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -68,19 +67,25 @@ public class SecurityRootDirectoryTest {
   }
 
   private static void verifyFiles(Path actualDirectory, Path deserializedDirectory) throws IOException {
-    assertThat(Files.list(deserializedDirectory).count(), is(Files.list(actualDirectory).count()));
-    Files.list(actualDirectory).forEach((actualPath -> {
-              Path deserializedPath = deserializedDirectory.resolve(actualPath.getFileName());
-              assertThat(Files.exists(deserializedPath), is(true));
-              try {
-                byte[] expectedFileContents = IOUtils.toByteArray(Files.newInputStream(actualPath));
-                byte[] actualFileContents = IOUtils.toByteArray(Files.newInputStream(actualPath));
-                assertThat(Arrays.equals(expectedFileContents, actualFileContents), is(true));
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
-            })
-    );
+    try (Stream<Path> actual = Files.list(actualDirectory);
+         Stream<Path> deserialized = Files.list(deserializedDirectory)) {
+      assertThat(deserialized.count(), is(actual.count()));
+    }
+
+    try (Stream<Path> actual = Files.list(actualDirectory)) {
+      actual.forEach(actualPath -> {
+          Path deserializedPath = deserializedDirectory.resolve(actualPath.getFileName());
+          assertThat(Files.exists(deserializedPath), is(true));
+          try {
+            byte[] expectedFileContents = Files.readAllBytes(deserializedPath);
+            byte[] actualFileContents = Files.readAllBytes(actualPath);
+            assertArrayEquals(expectedFileContents, actualFileContents);
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      );
+    }
   }
 
   @Test

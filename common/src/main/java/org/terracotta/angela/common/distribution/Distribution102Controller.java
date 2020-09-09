@@ -17,7 +17,6 @@
 
 package org.terracotta.angela.common.distribution;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.common.AngelaProperties;
@@ -42,6 +41,7 @@ import org.terracotta.angela.common.topology.PackageType;
 import org.terracotta.angela.common.topology.Topology;
 import org.terracotta.angela.common.topology.Version;
 import org.terracotta.angela.common.util.ExternalLoggers;
+import org.terracotta.angela.common.util.FileUtils;
 import org.terracotta.angela.common.util.HostPort;
 import org.terracotta.angela.common.util.OS;
 import org.terracotta.angela.common.util.ProcessUtil;
@@ -211,7 +211,7 @@ public class Distribution102Controller extends DistributionController {
       throw new RuntimeException(e);
     } finally {
       try {
-        FileUtils.deleteDirectory(tmpConfigDir);
+        FileUtils.deleteDirectory(tmpConfigDir.toPath());
       } catch (IOException ioe) {
         logger.error("Error deleting temporary cluster tool TC config files", ioe);
       }

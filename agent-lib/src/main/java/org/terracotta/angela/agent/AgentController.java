@@ -17,7 +17,6 @@
 
 package org.terracotta.angela.agent;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.ignite.Ignite;
 import org.slf4j.Logger;
@@ -51,6 +50,7 @@ import org.terracotta.angela.common.tms.security.config.TmsServerSecurityConfig;
 import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.topology.Topology;
 import org.terracotta.angela.common.util.FileMetadata;
+import org.terracotta.angela.common.util.FileUtils;
 import org.terracotta.angela.common.util.IgniteCommonHelper;
 import org.terracotta.angela.common.util.ProcessUtil;
 
@@ -557,8 +557,8 @@ public class AgentController {
   public void deleteClient(InstanceId instanceId) {
     try {
       File subAgentRoot = new RemoteClientManager(instanceId).getClientInstallationPath();
-      logger.info("cleaning up directory structure '{}' of client {}", subAgentRoot, instanceId);
-      FileUtils.deleteDirectory(subAgentRoot);
+      logger.info("Cleaning up directory structure '{}' of client {}", subAgentRoot, instanceId);
+      FileUtils.deleteDirectory(subAgentRoot.toPath());
     } catch (Exception e) {
       throw new RuntimeException("Error deleting client " + instanceId, e);
     }
