@@ -18,6 +18,7 @@ package org.terracotta.angela.common.util;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.CopyOption;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,7 +58,50 @@ public class FileUtils {
     }
   }
 
-  public static void deleteDirectory(Path file) throws IOException {
-    org.terracotta.utilities.io.Files.deleteTree(file);
+  public static void createAndValidateDir(Path dirToCreate) {
+    try {
+      if (!Files.exists(dirToCreate)) {
+        Files.createDirectories(dirToCreate);
+      } else if (!Files.isDirectory(dirToCreate)) {
+        throw new RuntimeException(dirToCreate.getFileName() + " is not a directory");
+      }
+
+      if (!Files.isWritable(dirToCreate)) {
+        throw new RuntimeException(dirToCreate.getFileName() + " directory is not writable");
+      }
+
+      if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+        Set<PosixFilePermission> perms = new HashSet<>(Files.getPosixFilePermissions(dirToCreate));
+        perms.addAll(EnumSet.of(PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE));
+        Files.setPosixFilePermissions(dirToCreate, perms);
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  public static boolean deleteQuietly(Path path) {
+    try {
+      deleteTree(path);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  public static void copy(Path src, Path dest, CopyOption... copyOptions) {
+    try {
+      org.terracotta.utilities.io.Files.copy(src, dest, copyOptions);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  public static void deleteTree(Path file) {
+    try {
+      org.terracotta.utilities.io.Files.deleteTree(file);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }

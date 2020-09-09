@@ -23,13 +23,13 @@ import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.topology.InstanceId;
-import org.terracotta.angela.common.util.DirectoryUtils;
 import org.terracotta.angela.common.util.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 
 import static org.terracotta.angela.common.AngelaProperties.KIT_COPY;
@@ -69,7 +69,7 @@ public class RemoteKitManager extends KitManager {
         return kitInstallationPath.toFile();
       } else {
         logger.info("Copying {} to {}", kitInstallationPath.toAbsolutePath(), workingDir);
-        DirectoryUtils.copyDirectory(kitInstallationPath, workingDir);
+        FileUtils.copy(kitInstallationPath, workingDir, StandardCopyOption.REPLACE_EXISTING);
         if (license != null) {
           license.writeToFile(workingDir.toFile());
         }
@@ -93,8 +93,8 @@ public class RemoteKitManager extends KitManager {
     return true;
   }
 
-  public void deleteInstall(File installLocation) throws IOException {
+  public void deleteInstall(File installLocation) {
     logger.info("Deleting installation in {}", installLocation.getAbsolutePath());
-    FileUtils.deleteDirectory(installLocation.toPath());
+    FileUtils.deleteTree(installLocation.toPath());
   }
 }

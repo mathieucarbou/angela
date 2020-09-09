@@ -210,11 +210,7 @@ public class Distribution102Controller extends DistributionController {
     } catch (Exception e) {
       throw new RuntimeException(e);
     } finally {
-      try {
-        FileUtils.deleteDirectory(tmpConfigDir.toPath());
-      } catch (IOException ioe) {
-        logger.error("Error deleting temporary cluster tool TC config files", ioe);
-      }
+      FileUtils.deleteTree(tmpConfigDir.toPath());
     }
 
     if (processResult.getExitValue() != 0) {

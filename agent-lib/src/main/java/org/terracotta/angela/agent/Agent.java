@@ -44,7 +44,7 @@ import static org.terracotta.angela.common.AngelaProperties.DIRECT_JOIN;
 import static org.terracotta.angela.common.AngelaProperties.IGNITE_LOGGING;
 import static org.terracotta.angela.common.AngelaProperties.NODE_NAME;
 import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
-import static org.terracotta.angela.common.util.DirectoryUtils.createAndValidateDir;
+import static org.terracotta.angela.common.util.FileUtils.createAndValidateDir;
 
 /**
  * @author Ludovic Orban
