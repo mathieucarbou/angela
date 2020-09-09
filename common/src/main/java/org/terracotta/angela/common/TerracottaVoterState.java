@@ -20,6 +20,7 @@ package org.terracotta.angela.common;
 public enum TerracottaVoterState {
   NOT_INSTALLED,
   STARTED,
+  CONNECTED_TO_ACTIVE,
   STOPPED
 }
 

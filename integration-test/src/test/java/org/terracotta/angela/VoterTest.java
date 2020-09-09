@@ -16,16 +16,18 @@
  */
 package org.terracotta.angela;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.terracotta.angela.client.ClusterFactory;
-import org.terracotta.angela.client.Tsa;
+import org.terracotta.angela.client.Voter;
 import org.terracotta.angela.client.config.ConfigurationContext;
-import org.terracotta.angela.common.TerracottaVoter;
-import org.terracotta.angela.common.topology.PackageType;
 import org.terracotta.angela.common.topology.Topology;
 
+import java.time.Duration;
+
+import static org.awaitility.Awaitility.await;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
+import static org.terracotta.angela.common.TerracottaVoter.voter;
+import static org.terracotta.angela.common.TerracottaVoterState.CONNECTED_TO_ACTIVE;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
 import static org.terracotta.angela.common.dynamic_cluster.Stripe.stripe;
 import static org.terracotta.angela.common.provider.DynamicConfigManager.dynamicCluster;
@@ -35,7 +37,6 @@ import static org.terracotta.angela.common.topology.PackageType.KIT;
 import static org.terracotta.angela.common.topology.Version.version;
 
 public class VoterTest {
-  @Ignore ("Voter script in ehcache kit doesn't work")
   @Test
   public void testVoterStartup() throws Exception {
     ConfigurationContext configContext = customConfigurationContext()
@@ -51,21 +52,30 @@ public class VoterTest {
                                 .configRepo("terracotta1/repository")
                                 .logs("terracotta1/logs")
                                 .metaData("terracotta1/metadata")
+                                .failoverPriority("consistency:1"),
+                            server("server-2", "localhost")
+                                .tsaPort(9510)
+                                .tsaGroupPort(9511)
+                                .configRepo("terracotta2/repository")
+                                .logs("terracotta2/logs")
+                                .metaData("terracotta2/metadata")
                                 .failoverPriority("consistency:1")
                         )
                     )
                 )
             )
-        ).voter(
-            voter -> voter.distribution(distribution(version("3.9-SNAPSHOT"), PackageType.KIT, TERRACOTTA_OS))
-                          .addVoter(TerracottaVoter.voter("voter", "localhost", "localhost:9410"))
+        ).voter(voter -> voter
+            .distribution(distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS))
+            .addVoter(voter("voter", "localhost", "localhost:9410", "localhost:9510"))
         );
 
-    try (ClusterFactory factory = new ClusterFactory("ConfigToolTest::testVoterStartup", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll().activateAll();
-
-      factory.voter().startAll();
+    try (ClusterFactory factory = new ClusterFactory("VoterTest::testVoterStartup", configContext)) {
+      factory.tsa().startAll().attachAll().activateAll();
+      Voter voter = factory.voter();
+      voter.startAll();
+      await()
+          .atMost(Duration.ofSeconds(30))
+          .until(() -> voter.getTerracottaVoterState(configContext.voter().getTerracottaVoters().get(0)) == CONNECTED_TO_ACTIVE);
     }
   }
 }
