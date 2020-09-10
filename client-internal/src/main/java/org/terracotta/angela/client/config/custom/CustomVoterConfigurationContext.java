@@ -27,10 +27,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CustomVoterConfigurationContext implements VoterConfigurationContext {
-  private List<TerracottaVoter> terracottaVoters = new ArrayList<>();
+  private final TerracottaCommandLineEnvironment terracottaCommandLineEnvironment = TerracottaCommandLineEnvironment.DEFAULT;
+  private final List<TerracottaVoter> terracottaVoters = new ArrayList<>();
   private Distribution distribution;
   private License license;
-  private TerracottaCommandLineEnvironment terracottaCommandLineEnvironment = TerracottaCommandLineEnvironment.DEFAULT;
 
   protected CustomVoterConfigurationContext() {
   }

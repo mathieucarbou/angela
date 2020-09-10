@@ -194,19 +194,25 @@ public class Distribution107Controller extends DistributionController {
     TriggeringOutputStream outputStream = TriggeringOutputStream
         .triggerOn(
             compile("^.*PID is (\\d+).*$"),
-            mr -> javaPid.set(parseInt(mr.group(1))))
+            mr -> {
+              javaPid.set(parseInt(mr.group(1)));
+              stateRef.compareAndSet(TerracottaVoterState.STOPPED, TerracottaVoterState.STARTED);
+            })
         .andTriggerOn(
             compile("^.*\\QVote owner state: ACTIVE-COORDINATOR\\E.*$"),
-            mr -> stateRef.compareAndSet(TerracottaVoterState.STOPPED, TerracottaVoterState.STARTED))
+            mr -> stateRef.compareAndSet(TerracottaVoterState.STARTED, TerracottaVoterState.CONNECTED_TO_ACTIVE))
         .andTriggerOn(voterFullLogging ? compile("^.*$") : compile("^.*(WARN|ERROR).*$"),
             mr -> ExternalLoggers.voterLogger.info("[{}] {}", terracottaVoter.getId(), mr.group()));
 
-    WatchedProcess<TerracottaVoterState> watchedProcess = new WatchedProcess<>(new ProcessExecutor()
-        .command(startVoterCommand(kitDir, terracottaVoter))
-        .directory(workingDir)
-        .environment(env)
-        .redirectErrorStream(true)
-        .redirectOutput(outputStream), stateRef, TerracottaVoterState.STOPPED);
+    WatchedProcess<TerracottaVoterState> watchedProcess = new WatchedProcess<>(
+        new ProcessExecutor()
+            .command(startVoterCommand(kitDir, terracottaVoter))
+            .directory(workingDir)
+            .environment(env)
+            .redirectErrorStream(true)
+            .redirectOutput(outputStream),
+        stateRef,
+        TerracottaVoterState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaVoterState.STOPPED) && watchedProcess.isAlive()) {
       try {
@@ -526,12 +532,7 @@ public class Distribution107Controller extends DistributionController {
   }
 
   private String getStartVoterExecutable(File installLocation) {
-    String execPath =
-        "tools" + separator + "voter" + separator + "bin" + separator + "start-tc-voter" + OS.INSTANCE.getShellExtension();
-    if (distribution.getLicenseType().isOpenSource()) {
-      //TODO: remove this once voter location in OSS kit fixed
-      execPath = "voter" + separator + "bin" + separator + "start-tc-voter" + OS.INSTANCE.getShellExtension();
-    }
+    String execPath = "tools" + separator + "voter" + separator + "bin" + separator + "start-tc-voter" + OS.INSTANCE.getShellExtension();
     if (distribution.getPackageType() == PackageType.KIT) {
       return installLocation.getAbsolutePath() + separator + execPath;
     } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
