@@ -20,6 +20,7 @@ package org.terracotta.angela.common.distribution;
 import org.terracotta.angela.common.ClusterToolExecutionResult;
 import org.terracotta.angela.common.ConfigToolExecutionResult;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
+import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.ToolExecutionResult;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
@@ -140,9 +141,10 @@ public abstract class DistributionController {
     }
   }
 
-  public abstract TerracottaVoterInstance.TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv);
+  public abstract TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir,
+                                                            SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv);
 
-  public abstract void stopVoter(TerracottaVoterInstance.TerracottaVoterInstanceProcess terracottaVoterInstanceProcess);
+  public abstract void stopVoter(TerracottaVoterInstanceProcess terracottaVoterInstanceProcess);
   
   public abstract void configure(String clusterName, File kitDir, File workingDir, String licensePath, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, SecurityRootDirectory securityRootDirectory, TerracottaCommandLineEnvironment env, boolean verbose);
 

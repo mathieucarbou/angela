@@ -207,8 +207,9 @@ public class AgentController {
     }
   }
 
-  public boolean installVoter(InstanceId instanceId, TerracottaVoter terracottaVoter, Distribution distribution, License license,
-                              String kitInstallationName, TerracottaCommandLineEnvironment tcEnv) {
+  public boolean installVoter(InstanceId instanceId, TerracottaVoter terracottaVoter, Distribution distribution,
+                              License license, String kitInstallationName, SecurityRootDirectory securityRootDirectory,
+                              TerracottaCommandLineEnvironment tcEnv) {
     VoterInstall voterInstall = voterInstalls.get(instanceId);
 
     if (voterInstall == null) {
@@ -220,7 +221,7 @@ public class AgentController {
       logger.info("Installing kit for {} from {}", terracottaVoter, distribution);
       File kitDir = kitManager.installKit(license, Collections.singletonList(terracottaVoter.getHostName()));
       File workingDir = kitManager.getWorkingDir().toFile();
-      voterInstall = voterInstalls.computeIfAbsent(instanceId, (id) -> new VoterInstall(distribution, kitDir, workingDir, tcEnv));
+      voterInstall = voterInstalls.computeIfAbsent(instanceId, (id) -> new VoterInstall(distribution, kitDir, workingDir, securityRootDirectory, tcEnv));
     }
 
     voterInstall.addVoter(terracottaVoter);

@@ -204,9 +204,10 @@ public class Distribution107ControllerTest {
     Distribution107Controller controller = new Distribution107Controller(distribution);
 
     final File installLocation = new File("/somedir");
+    final File workDir= new File("/workdir");
     final TerracottaVoter terracottaVoter = mock(TerracottaVoter.class);
     when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList("9410", "9510"));
-    final List<String> voterCommand = controller.startVoterCommand( installLocation, terracottaVoter);
+    final List<String> voterCommand = controller.startVoterCommand(installLocation, workDir, null, terracottaVoter);
 
     assertThat(voterCommand.get(0), is(equalTo(new File("/somedir/tools/voter/bin/start-tc-voter").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(voterCommand.get(1), is("-s"));
@@ -222,9 +223,10 @@ public class Distribution107ControllerTest {
     Distribution107Controller controller = new Distribution107Controller(distribution);
 
     final File installLocation = new File("/somedir");
+    final File workDir = new File("/workDir");
     final TerracottaVoter terracottaVoter = mock(TerracottaVoter.class);
     when(terracottaVoter.getHostPorts()).thenReturn(Arrays.asList("9410", "9510"));
-    final List<String> voterCommand = controller.startVoterCommand( installLocation, terracottaVoter);
+    final List<String> voterCommand = controller.startVoterCommand(installLocation, workDir, null, terracottaVoter);
 
     assertThat(voterCommand.get(0), is(equalTo(new File("/somedir/TerracottaDB/tools/voter/bin/start-tc-voter").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(voterCommand.get(1), is("-s"));

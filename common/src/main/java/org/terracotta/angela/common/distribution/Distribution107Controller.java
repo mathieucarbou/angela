@@ -27,7 +27,7 @@ import org.terracotta.angela.common.TerracottaManagementServerState;
 import org.terracotta.angela.common.TerracottaServerInstance.TerracottaServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
-import org.terracotta.angela.common.TerracottaVoterInstance;
+import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.TerracottaVoterState;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
@@ -185,7 +185,8 @@ public class Distribution107Controller extends DistributionController {
   }
 
   @Override
-  public TerracottaVoterInstance.TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+  public TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir,
+                                                   SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv) {
     Map<String, String> env = buildEnv(tcEnv);
 
     AtomicReference<TerracottaVoterState> stateRef = new AtomicReference<>(TerracottaVoterState.STOPPED);
@@ -206,7 +207,7 @@ public class Distribution107Controller extends DistributionController {
 
     WatchedProcess<TerracottaVoterState> watchedProcess = new WatchedProcess<>(
         new ProcessExecutor()
-            .command(startVoterCommand(kitDir, terracottaVoter))
+            .command(startVoterCommand(kitDir, workingDir, securityDir, terracottaVoter))
             .directory(workingDir)
             .environment(env)
             .redirectErrorStream(true)
@@ -227,17 +228,17 @@ public class Distribution107Controller extends DistributionController {
 
     int wrapperPid = watchedProcess.getPid();
     int javaProcessPid = javaPid.get();
-    return new TerracottaVoterInstance.TerracottaVoterInstanceProcess(stateRef, wrapperPid, javaProcessPid);
+    return new TerracottaVoterInstanceProcess(stateRef, wrapperPid, javaProcessPid);
   }
 
   @Override
-  public void stopVoter(TerracottaVoterInstance.TerracottaVoterInstanceProcess terracottaVoterInstanceProcess) {
+  public void stopVoter(TerracottaVoterInstanceProcess terracottaVoterInstanceProcess) {
     LOGGER.debug("Destroying Voter process");
     for (Number pid : terracottaVoterInstanceProcess.getPids()) {
       try {
         ProcessUtil.destroyGracefullyOrForcefullyAndWait(pid.intValue());
       } catch (Exception e) {
-        LOGGER.error("Could not destroy TMS process {}", pid, e);
+        LOGGER.error("Could not destroy voter process {}", pid, e);
       }
     }
   }
@@ -522,9 +523,15 @@ public class Distribution107Controller extends DistributionController {
     throw new IllegalStateException("Can not define TMS start command for distribution: " + distribution);
   }
 
-  List<String> startVoterCommand(File installLocation, TerracottaVoter terracottaVoter) {
+  List<String> startVoterCommand(File installLocation, File workingDir, SecurityRootDirectory securityRootDirectory, TerracottaVoter terracottaVoter) {
     List<String> command = new ArrayList<>();
     command.add(getStartVoterExecutable(installLocation));
+    if (securityRootDirectory != null) {
+      Path securityDirPath = workingDir.toPath().resolve("voter-security-dir");
+      securityRootDirectory.createSecurityRootDirectory(securityDirPath);
+      command.add("-srd");
+      command.add(securityDirPath.toString());
+    }
     command.add("-s");
     command.add(join(",", terracottaVoter.getHostPorts()));
     LOGGER.info("Start voter command: {}", command);
