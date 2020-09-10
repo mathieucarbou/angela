@@ -21,6 +21,7 @@ import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.tcconfig.License;
+import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 
 import java.util.List;
 
@@ -33,6 +34,8 @@ public interface VoterConfigurationContext {
   License getLicense();
 
   TerracottaCommandLineEnvironment getTerracottaCommandLineEnvironment();
+
+  SecurityRootDirectory getSecurityRootDirectory();
 
   List<String> getHostNames();
 }

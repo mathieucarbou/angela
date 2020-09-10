@@ -31,6 +31,7 @@ import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterState;
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.tcconfig.License;
+import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.topology.InstanceId;
 
 import java.util.ArrayList;
@@ -141,6 +142,7 @@ public class Voter implements AutoCloseable {
     Distribution distribution = voterConfigurationContext.getDistribution();
     License license = voterConfigurationContext.getLicense();
     TerracottaCommandLineEnvironment tcEnv = voterConfigurationContext.getTerracottaCommandLineEnvironment();
+    SecurityRootDirectory securityRootDirectory = voterConfigurationContext.getSecurityRootDirectory();
 
     logger.info("starting voter on {}", terracottaVoter.getHostName());
 
@@ -148,7 +150,7 @@ public class Voter implements AutoCloseable {
     localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
 
     IgniteCallable<Boolean> callable = () -> Agent.controller.installVoter(instanceId, terracottaVoter, distribution, license,
-        localKitManager.getKitInstallationName(), tcEnv);
+        localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv);
     boolean isRemoteInstallationSuccessful = kitInstallationPath == null && IgniteClientHelper.executeRemotely(ignite, terracottaVoter.getHostName(), ignitePort, callable);
 
     if (!isRemoteInstallationSuccessful) {

@@ -22,6 +22,7 @@ import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.tcconfig.License;
+import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.List;
 public class CustomVoterConfigurationContext implements VoterConfigurationContext {
   private final TerracottaCommandLineEnvironment terracottaCommandLineEnvironment = TerracottaCommandLineEnvironment.DEFAULT;
   private final List<TerracottaVoter> terracottaVoters = new ArrayList<>();
+  private SecurityRootDirectory securityRootDirectory;
   private Distribution distribution;
   private License license;
 
@@ -44,19 +46,24 @@ public class CustomVoterConfigurationContext implements VoterConfigurationContex
     return terracottaVoters;
   }
 
+  public CustomVoterConfigurationContext securityRootDirectory(SecurityRootDirectory securityRootDirectory) {
+    this.securityRootDirectory = securityRootDirectory;
+    return this;
+  }
+
   public CustomVoterConfigurationContext distribution(Distribution distribution) {
     this.distribution = distribution;
+    return this;
+  }
+
+  public CustomVoterConfigurationContext license(License license) {
+    this.license = license;
     return this;
   }
 
   @Override
   public Distribution getDistribution() {
     return distribution;
-  }
-
-  public CustomVoterConfigurationContext license(License license) {
-    this.license = license;
-    return this;
   }
 
   @Override
@@ -67,6 +74,11 @@ public class CustomVoterConfigurationContext implements VoterConfigurationContex
   @Override
   public TerracottaCommandLineEnvironment getTerracottaCommandLineEnvironment() {
     return terracottaCommandLineEnvironment;
+  }
+
+  @Override
+  public SecurityRootDirectory getSecurityRootDirectory() {
+    return securityRootDirectory;
   }
 
   @Override

@@ -21,6 +21,7 @@ import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance;
 import org.terracotta.angela.common.distribution.Distribution;
+import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 
 import java.io.File;
 import java.util.HashMap;
@@ -30,13 +31,16 @@ public class VoterInstall {
   private final Distribution distribution;
   private final File kitLocation;
   private final File workingDir;
+  private final SecurityRootDirectory securityRootDirectory;
   private final TerracottaCommandLineEnvironment tcEnv;
   private final Map<String, TerracottaVoterInstance> terracottaVoterInstances = new HashMap<>();
   
-  public VoterInstall(Distribution distribution, File kitLocation, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+  public VoterInstall(Distribution distribution, File kitLocation, File workingDir, SecurityRootDirectory securityRootDirectory,
+                      TerracottaCommandLineEnvironment tcEnv) {
     this.distribution = distribution;
     this.kitLocation = kitLocation;
     this.workingDir = workingDir;
+    this.securityRootDirectory = securityRootDirectory;
     this.tcEnv = tcEnv;
   }
 
@@ -52,7 +56,8 @@ public class VoterInstall {
 
   public void addVoter(TerracottaVoter terracottaVoter) {
     synchronized (terracottaVoterInstances) {
-      TerracottaVoterInstance terracottaVoterInstance = new TerracottaVoterInstance(terracottaVoter, distribution.createDistributionController(), kitLocation, workingDir, tcEnv);
+      TerracottaVoterInstance terracottaVoterInstance = new TerracottaVoterInstance(terracottaVoter,
+          distribution.createDistributionController(), kitLocation, workingDir, securityRootDirectory, tcEnv);
       terracottaVoterInstances.put(terracottaVoter.getId(), terracottaVoterInstance);
     }
   }

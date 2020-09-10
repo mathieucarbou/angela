@@ -18,6 +18,7 @@
 package org.terracotta.angela.common;
 
 import org.terracotta.angela.common.distribution.DistributionController;
+import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 
 import java.io.File;
 import java.util.Collections;
@@ -30,20 +31,24 @@ public class TerracottaVoterInstance {
   private final TerracottaVoter terracottaVoter;
   private final File kitDir;
   private final DistributionController distributionController;
+  private final SecurityRootDirectory securityRootDirectory;
   private final File workingDir;
   private final TerracottaCommandLineEnvironment tcEnv;
   private volatile TerracottaVoterInstance.TerracottaVoterInstanceProcess terracottaVoterInstanceProcess = new TerracottaVoterInstance.TerracottaVoterInstanceProcess(new AtomicReference<>(TerracottaVoterState.STOPPED));
 
-  public TerracottaVoterInstance(TerracottaVoter terracottaVoter, DistributionController distributionController, File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+  public TerracottaVoterInstance(TerracottaVoter terracottaVoter, DistributionController distributionController,
+                                 File kitDir, File workingDir, SecurityRootDirectory securityRootDirectory,
+                                 TerracottaCommandLineEnvironment tcEnv) {
     this.terracottaVoter = terracottaVoter;
     this.distributionController = distributionController;
     this.kitDir = kitDir;
     this.workingDir = workingDir;
+    this.securityRootDirectory = securityRootDirectory;
     this.tcEnv = tcEnv;
   }
 
   public void start() {
-    terracottaVoterInstanceProcess = distributionController.startVoter(terracottaVoter, kitDir, workingDir, tcEnv);
+    terracottaVoterInstanceProcess = distributionController.startVoter(terracottaVoter, kitDir, workingDir, securityRootDirectory, tcEnv);
   }
 
   public void stop() {
