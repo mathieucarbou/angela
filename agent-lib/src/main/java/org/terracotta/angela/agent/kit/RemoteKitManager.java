@@ -29,12 +29,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.terracotta.angela.common.AngelaProperties.KIT_COPY;
 import static org.terracotta.angela.common.AngelaProperties.SKIP_KIT_COPY_LOCALHOST;
 import static org.terracotta.angela.common.util.IpUtils.areAllLocal;
+import static org.terracotta.utilities.io.Files.ExtendedOption.RECURSIVE;
 
 /**
  * Download the kit tarball from Kratos
@@ -69,7 +70,7 @@ public class RemoteKitManager extends KitManager {
         return kitInstallationPath.toFile();
       } else {
         logger.info("Copying {} to {}", kitInstallationPath.toAbsolutePath(), workingDir);
-        FileUtils.copy(kitInstallationPath, workingDir, StandardCopyOption.REPLACE_EXISTING);
+        FileUtils.copy(kitInstallationPath, workingDir, REPLACE_EXISTING, RECURSIVE);
         if (license != null) {
           license.writeToFile(workingDir.toFile());
         }
