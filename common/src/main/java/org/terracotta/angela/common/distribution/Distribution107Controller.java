@@ -14,13 +14,10 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
-
 package org.terracotta.angela.common.distribution;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terracotta.angela.common.ClusterToolExecutionResult;
-import org.terracotta.angela.common.ConfigToolExecutionResult;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaManagementServerState;
@@ -29,6 +26,7 @@ import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.TerracottaVoterState;
+import org.terracotta.angela.common.ToolExecutionResult;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
@@ -244,21 +242,10 @@ public class Distribution107Controller extends DistributionController {
   }
 
   @Override
-  public void configure(String clusterName, File kitDir, File workingDir, String licensePath, Topology topology, Map<ServerSymbolicName,
-      Integer> proxyTsaPorts, SecurityRootDirectory srd, TerracottaCommandLineEnvironment tcEnv, boolean verbose) {
-    TerracottaServer server = topology.getServers().get(0);
-    List<String> args = new ArrayList<>(Arrays.asList("activate", "-n", clusterName, "-s", server.getHostPort()));
-    if (licensePath != null) {
-      args.add("-l");
-      args.add(licensePath);
-    }
-    invokeConfigTool(kitDir, workingDir, tcEnv, server.getSecurityDir(), args.toArray(new String[0]));
-  }
-
-  @Override
-  public ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments) {
+  public ToolExecutionResult invokeClusterTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
+                                                      TerracottaCommandLineEnvironment env, String... arguments) {
     try {
-      ProcessResult processResult = new ProcessExecutor(createClusterToolCommand(kitDir, securityDir, arguments))
+      ProcessResult processResult = new ProcessExecutor(createClusterToolCommand(kitDir, workingDir, securityDir, arguments))
           .directory(workingDir)
           .environment(buildEnv(env))
           .readOutput(true)
@@ -266,24 +253,25 @@ public class Distribution107Controller extends DistributionController {
           .redirectErrorStream(true)
           .exitValue(0)
           .execute();
-      return new ClusterToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
+      return new ToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
   @Override
-  public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Path securityDir, String... arguments) {
+  public ToolExecutionResult invokeConfigTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
+                                              TerracottaCommandLineEnvironment env, String... command) {
     try {
-      ProcessResult processResult = new ProcessExecutor(createConfigToolCommand(kitDir, securityDir, arguments))
+      ProcessResult processResult = new ProcessExecutor(createConfigToolCommand(kitDir, workingDir, securityDir, command))
           .directory(workingDir)
-          .environment(buildEnv(tcEnv))
+          .environment(buildEnv(env))
           .readOutput(true)
           .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.configToolLogger).asInfo())
           .redirectErrorStream(true)
           .exitValue(0)
           .execute();
-      return new ConfigToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
+      return new ToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -457,12 +445,14 @@ public class Distribution107Controller extends DistributionController {
     throw new IllegalStateException("Can not define Terracotta server start command for distribution: " + distribution);
   }
 
-  List<String> createConfigToolCommand(File installLocation, Path securityDir, String[] arguments) {
+  List<String> createConfigToolCommand(File installLocation, File workingDir, SecurityRootDirectory securityDir, String[] arguments) {
     List<String> command = new ArrayList<>();
     command.add(getConfigToolExecutable(installLocation));
     if (securityDir != null) {
+      Path securityRootDirectoryPath = workingDir.toPath().resolve("config-tool-security-dir");
+      securityDir.createSecurityRootDirectory(securityRootDirectoryPath);
       command.add("-srd");
-      command.add(securityDir.toString());
+      command.add(securityRootDirectoryPath.toString());
     }
     command.addAll(Arrays.asList(arguments));
 
@@ -470,12 +460,14 @@ public class Distribution107Controller extends DistributionController {
     return command;
   }
 
-  List<String> createClusterToolCommand(File installLocation, Path securityDir, String[] arguments) {
+  List<String> createClusterToolCommand(File installLocation, File workingDir, SecurityRootDirectory securityDir, String[] arguments) {
     List<String> command = new ArrayList<>();
     command.add(getClusterToolExecutable(installLocation));
     if (securityDir != null) {
+      Path securityDirPath = workingDir.toPath().resolve("cluster-tool-security-dir");
+      securityDir.createSecurityRootDirectory(securityDirPath);
       command.add("-srd");
-      command.add(securityDir.toString());
+      command.add(securityDirPath.toString());
     }
     command.addAll(Arrays.asList(arguments));
 
@@ -504,7 +496,6 @@ public class Distribution107Controller extends DistributionController {
     }
     throw new IllegalStateException("Can not define cluster tool command for distribution: " + distribution);
   }
-
 
   List<String> startTmsCommand(File installLocation) {
     List<String> command = new ArrayList<>();

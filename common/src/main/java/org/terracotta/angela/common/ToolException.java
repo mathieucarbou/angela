@@ -16,32 +16,24 @@
  */
 package org.terracotta.angela.common;
 
-import java.util.List;
+/**
+ * @author Aurelien Broszniowski
+ */
+public class ToolException extends RuntimeException {
+  private final String commandOutput;
+  private final int exitValue;
 
-public class ToolExecutionResult {
-  private final int exitStatus;
-  private final List<String> output;
-
-  public ToolExecutionResult(int exitStatus, List<String> output) {
-    this.exitStatus = exitStatus;
-    this.output = output;
+  public ToolException(final String message, final String commandOutput, final int exitValue) {
+    super(message + " [exit value = " + exitValue + "]\n" + commandOutput);
+    this.commandOutput = commandOutput;
+    this.exitValue = exitValue;
   }
 
-  public int getExitStatus() {
-    return exitStatus;
+  public String getCommandOutput() {
+    return commandOutput;
   }
 
-  public List<String> getOutput() {
-    return output;
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("rc=").append(exitStatus).append(" --- --- [start output] --- --- ---\n");
-    for (String s : output) {
-      sb.append(s).append("\n");
-    }
-    return sb.append("--- --- --- [ end output ] --- --- ---\n").toString();
+  public int getExitValue() {
+    return exitValue;
   }
 }

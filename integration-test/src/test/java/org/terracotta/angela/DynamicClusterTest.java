@@ -19,9 +19,11 @@ package org.terracotta.angela;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 import org.terracotta.angela.client.ClusterFactory;
+import org.terracotta.angela.client.ConfigTool;
 import org.terracotta.angela.client.Tsa;
 import org.terracotta.angela.client.config.ConfigurationContext;
 import org.terracotta.angela.client.config.custom.CustomConfigurationContext;
+import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
 
@@ -31,6 +33,7 @@ import java.util.concurrent.Callable;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
+import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
 import static org.terracotta.angela.common.dynamic_cluster.Stripe.stripe;
 import static org.terracotta.angela.common.provider.DynamicConfigManager.dynamicCluster;
@@ -42,6 +45,7 @@ import static org.terracotta.angela.common.topology.Version.version;
 public class DynamicClusterTest {
   private static final Duration TIMEOUT = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(1);
+  private static final Distribution DISTRIBUTION = distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS);
 
   @Test
   public void testNodeStartup() throws Exception {
@@ -49,7 +53,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -88,7 +92,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -102,7 +106,7 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicNodeAttachToSingleNodeStripe", configContext)) {
       Tsa tsa = factory.tsa();
@@ -111,7 +115,7 @@ public class DynamicClusterTest {
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
 
-      tsa.attachNode(0, server("server-2", "localhost")
+      factory.configTool().attachNode(0, server("server-2", "localhost")
           .tsaPort(9510)
           .tsaGroupPort(9511)
           .configRepo("terracotta2/repository")
@@ -130,7 +134,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -151,7 +155,7 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicNodeAttachToMultiNodeStripe", configContext)) {
       Tsa tsa = factory.tsa();
@@ -160,7 +164,7 @@ public class DynamicClusterTest {
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
 
-      tsa.attachNode(0, server("server-3", "localhost")
+      factory.configTool().attachNode(0, server("server-3", "localhost")
           .tsaPort(9610)
           .tsaGroupPort(9611)
           .configRepo("terracotta3/repository")
@@ -179,7 +183,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -193,7 +197,7 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicStripeAttachToSingleStripeCluster", configContext)) {
       Tsa tsa = factory.tsa();
@@ -202,7 +206,7 @@ public class DynamicClusterTest {
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
 
-      tsa.attachStripe(server("server-2", "localhost")
+      factory.configTool().attachStripe(server("server-2", "localhost")
           .tsaPort(9510)
           .tsaGroupPort(9511)
           .configRepo("terracotta2/repository")
@@ -222,7 +226,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -245,7 +249,7 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicStripeAttachToMultiStripeCluster", configContext)) {
       Tsa tsa = factory.tsa();
@@ -255,7 +259,7 @@ public class DynamicClusterTest {
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
 
-      tsa.attachStripe(server("server-3", "localhost")
+      factory.configTool().attachStripe(server("server-3", "localhost")
           .tsaPort(9610)
           .tsaGroupPort(9611)
           .configRepo("terracotta3/repository")
@@ -275,7 +279,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -296,12 +300,13 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testSingleStripeFormation", configContext)) {
       Tsa tsa = factory.tsa();
-      tsa.startAll().attachAll();
+      tsa.startAll();
+      factory.configTool().attachAll();
 
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
@@ -314,7 +319,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -351,12 +356,12 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testMultiStripeFormation", configContext)) {
       Tsa tsa = factory.tsa();
       tsa.startAll();
-      tsa.attachAll();
+      factory.configTool().attachAll();
 
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
@@ -370,7 +375,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -393,11 +398,13 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicStripeDetach", configContext)) {
       Tsa tsa = factory.tsa();
-      tsa.startAll().attachAll();
+      tsa.startAll();
+      ConfigTool configTool = factory.configTool();
+      configTool.attachAll();
 
       waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(2));
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
@@ -405,7 +412,7 @@ public class DynamicClusterTest {
       waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
 
       TerracottaServer toDetach = tsa.getServer(1, 0);
-      tsa.detachStripe(1);
+      configTool.detachStripe(1);
       tsa.stop(toDetach);
 
       waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(1));
@@ -420,7 +427,7 @@ public class DynamicClusterTest {
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -441,11 +448,14 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testNodeActivation", configContext)) {
       Tsa tsa = factory.tsa();
-      tsa.startAll().attachAll().activateAll();
+      tsa.startAll();
+      ConfigTool configTool = factory.configTool();
+      configTool.attachAll();
+      configTool.activate();
 
       waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(0));
       waitFor(() -> tsa.getActives().size(), is(1));
@@ -455,11 +465,11 @@ public class DynamicClusterTest {
 
   @Test
   public void testIpv6() throws Exception {
-    CustomConfigurationContext context = customConfigurationContext()
+    CustomConfigurationContext configurationContext = customConfigurationContext()
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    DISTRIBUTION,
                     dynamicCluster(
                         stripe(
                             server("node-1", "localhost")
@@ -484,14 +494,16 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        );
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testIpv6", context)) {
+        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
+
+    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testIpv6", configurationContext)) {
       Tsa tsa = factory.tsa();
       tsa.startAll();
       waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(2));
 
-      tsa.attachAll();
-      tsa.activateAll();
+      ConfigTool configTool = factory.configTool();
+      configTool.attachAll();
+      configTool.activate();
       waitFor(() -> tsa.getActives().size(), is(1));
       waitFor(() -> tsa.getPassives().size(), is(1));
     }

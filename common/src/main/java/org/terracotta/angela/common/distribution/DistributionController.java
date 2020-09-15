@@ -17,9 +17,13 @@
 
 package org.terracotta.angela.common.distribution;
 
-import org.terracotta.angela.common.ClusterToolExecutionResult;
-import org.terracotta.angela.common.ConfigToolExecutionResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
+import org.terracotta.angela.common.TerracottaManagementServerInstance;
+import org.terracotta.angela.common.TerracottaServerInstance;
+import org.terracotta.angela.common.TerracottaServerState;
+import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.ToolExecutionResult;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
@@ -29,20 +33,12 @@ import org.terracotta.angela.common.topology.Topology;
 import org.terracotta.angela.common.util.JavaLocationResolver;
 import org.terracotta.angela.common.util.OS;
 import org.terracotta.angela.common.util.ProcessUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.terracotta.angela.common.TerracottaVoter;
-import org.terracotta.angela.common.TerracottaVoterInstance;
-import org.terracotta.angela.common.TerracottaManagementServerInstance;
-import org.terracotta.angela.common.TerracottaServerInstance;
-import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.util.RetryUtils;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 
 import java.io.File;
 import java.net.URI;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -145,12 +141,12 @@ public abstract class DistributionController {
                                                             SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv);
 
   public abstract void stopVoter(TerracottaVoterInstanceProcess terracottaVoterInstanceProcess);
-  
-  public abstract void configure(String clusterName, File kitDir, File workingDir, String licensePath, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, SecurityRootDirectory securityRootDirectory, TerracottaCommandLineEnvironment env, boolean verbose);
 
-  public abstract ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments);
+  public abstract ToolExecutionResult invokeClusterTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
+                                                        TerracottaCommandLineEnvironment env, String... arguments);
 
-  public abstract ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments);
+  public abstract ToolExecutionResult invokeConfigTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
+                                                       TerracottaCommandLineEnvironment env, String... arguments);
 
   public abstract URI tsaUri(Collection<TerracottaServer> servers, Map<ServerSymbolicName, Integer> proxyTsaPorts);
 

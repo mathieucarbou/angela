@@ -21,6 +21,7 @@ import org.junit.runners.model.MultipleFailureException;
 import org.terracotta.angela.client.ClientArray;
 import org.terracotta.angela.client.ClusterFactory;
 import org.terracotta.angela.client.ClusterMonitor;
+import org.terracotta.angela.client.ConfigTool;
 import org.terracotta.angela.client.Tms;
 import org.terracotta.angela.client.Tsa;
 import org.terracotta.angela.client.Voter;
@@ -57,6 +58,7 @@ public class AngelaRule extends ExtendedTestRule {
   private Supplier<ClientArray> clientArray;
   private Supplier<ClusterMonitor> clusterMonitor;
   private Supplier<Voter> voter;
+  private Supplier<ConfigTool> configTool;
 
   public AngelaRule(ConfigurationContext configuration, boolean autoStart, boolean autoActivate) {
     this.configuration = configuration;
@@ -93,12 +95,13 @@ public class AngelaRule extends ExtendedTestRule {
     clientArray = memoize(clusterFactory::clientArray);
     clusterMonitor = memoize(clusterFactory::monitor);
     voter = memoize(clusterFactory::voter);
+    configTool = memoize(clusterFactory::configTool);
 
     if (autoStart) {
       startNodes();
       if (autoActivate) {
-        tsa().attachAll();
-        tsa().activateAll();
+        configTool().attachAll();
+        configTool().activate();
       }
     }
   }
@@ -222,6 +225,10 @@ public class AngelaRule extends ExtendedTestRule {
 
   public Tsa tsa() {
     return tsa.get();
+  }
+
+  public ConfigTool configTool() {
+    return configTool.get();
   }
 
   public Cluster cluster() {

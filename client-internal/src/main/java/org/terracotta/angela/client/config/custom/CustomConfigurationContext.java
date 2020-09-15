@@ -22,6 +22,7 @@ import org.terracotta.angela.client.config.ConfigurationContext;
 import org.terracotta.angela.client.config.MonitoringConfigurationContext;
 import org.terracotta.angela.client.config.RemotingConfigurationContext;
 import org.terracotta.angela.client.config.TmsConfigurationContext;
+import org.terracotta.angela.client.config.ToolConfigurationContext;
 import org.terracotta.angela.client.config.TsaConfigurationContext;
 import org.terracotta.angela.client.config.VoterConfigurationContext;
 import org.terracotta.angela.client.remote.agent.SshRemoteAgentLauncher;
@@ -38,6 +39,8 @@ public class CustomConfigurationContext implements ConfigurationContext {
   private CustomMonitoringConfigurationContext customMonitoringConfigurationContext;
   private CustomClientArrayConfigurationContext customClientArrayConfigurationContext;
   private CustomVoterConfigurationContext customVoterConfigurationContext;
+  private CustomClusterToolConfigurationContext customClusterToolConfigurationContext;
+  private CustomConfigToolConfigurationContext customConfigToolConfigurationContext;
 
   public static CustomConfigurationContext customConfigurationContext() {
     return new CustomConfigurationContext();
@@ -132,8 +135,36 @@ public class CustomConfigurationContext implements ConfigurationContext {
   }
 
   @Override
+  public ToolConfigurationContext clusterTool() {
+    return customClusterToolConfigurationContext;
+  }
+
+  @Override
+  public ToolConfigurationContext configTool() {
+    return customConfigToolConfigurationContext;
+  }
+
+  @Override
   public VoterConfigurationContext voter() {
     return customVoterConfigurationContext;
+  }
+
+  public CustomConfigurationContext clusterTool(Consumer<CustomClusterToolConfigurationContext> clusterTool) {
+    if (customClusterToolConfigurationContext != null) {
+      throw new IllegalStateException("Cluster tool config already defined");
+    }
+    customClusterToolConfigurationContext = new CustomClusterToolConfigurationContext();
+    clusterTool.accept(customClusterToolConfigurationContext);
+    return this;
+  }
+
+  public CustomConfigurationContext configTool(Consumer<CustomConfigToolConfigurationContext> configTool) {
+    if (customConfigToolConfigurationContext != null) {
+      throw new IllegalStateException("Config tool config already defined");
+    }
+    customConfigToolConfigurationContext = new CustomConfigToolConfigurationContext();
+    configTool.accept(customConfigToolConfigurationContext);
+    return this;
   }
 
   public CustomConfigurationContext voter(Consumer<CustomVoterConfigurationContext> voter) {

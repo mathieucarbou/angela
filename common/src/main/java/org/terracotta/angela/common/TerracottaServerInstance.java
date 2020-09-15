@@ -24,7 +24,6 @@ import org.terracotta.angela.common.net.DisruptionProviderFactory;
 import org.terracotta.angela.common.net.Disruptor;
 import org.terracotta.angela.common.net.PortAllocator;
 import org.terracotta.angela.common.tcconfig.License;
-import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
@@ -122,18 +121,6 @@ public class TerracottaServerInstance implements Closeable {
   @Override
   public void close() {
     removeDisruptionLinks();
-  }
-
-  public void configure(String clusterName, String licensePath, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, SecurityRootDirectory securityRootDirectory, TerracottaCommandLineEnvironment env, boolean verbose) {
-    this.distributionController.configure(clusterName, kitDir, workingDir, licensePath, topology, proxyTsaPorts, securityRootDirectory, env, verbose);
-  }
-
-  public ClusterToolExecutionResult clusterTool(TerracottaCommandLineEnvironment env, String... arguments) {
-    return distributionController.invokeClusterTool(kitDir, workingDir, env, terracottaServer.getSecurityDir(), arguments);
-  }
-
-  public ConfigToolExecutionResult configTool(TerracottaCommandLineEnvironment env, String... arguments) {
-    return distributionController.invokeConfigTool(kitDir, workingDir, env, terracottaServer.getSecurityDir(), arguments);
   }
 
   public ToolExecutionResult jcmd(TerracottaCommandLineEnvironment env, String... arguments) {

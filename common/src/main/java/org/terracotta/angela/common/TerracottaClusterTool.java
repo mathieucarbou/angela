@@ -14,13 +14,26 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
-
 package org.terracotta.angela.common;
 
-import java.util.List;
+public class TerracottaClusterTool {
+  private final String id;
+  private final String hostName;
 
-public class ConfigToolExecutionResult extends ToolExecutionResult {
-  public ConfigToolExecutionResult(int exitStatus, List<String> output) {
-    super(exitStatus, output);
+  private TerracottaClusterTool(String id, String hostName) {
+    this.id = id;
+    this.hostName = hostName;
+  }
+
+  public static TerracottaClusterTool clusterTool(String id, String hostName) {
+    return new TerracottaClusterTool(id, hostName);
+  }
+
+  public String getId() {
+    return id;
+  }
+
+  public String getHostName() {
+    return hostName;
   }
 }

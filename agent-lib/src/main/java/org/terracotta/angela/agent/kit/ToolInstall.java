@@ -14,13 +14,28 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
+package org.terracotta.angela.agent.kit;
 
-package org.terracotta.angela.common;
+import org.terracotta.angela.common.TerracottaToolInstance;
+import org.terracotta.angela.common.ToolExecutionResult;
 
-import java.util.List;
+import java.io.File;
+import java.util.function.Function;
 
-public class ClusterToolExecutionResult extends ToolExecutionResult {
-  public ClusterToolExecutionResult(int exitStatus, List<String> output) {
-    super(exitStatus, output);
+public class ToolInstall {
+  private final TerracottaToolInstance toolInstance;
+  private final File workingDir;
+
+  public ToolInstall(File workingDir, Function<String[], ToolExecutionResult> operation) {
+    this.workingDir = workingDir;
+    this.toolInstance = new TerracottaToolInstance(operation);
+  }
+
+  public TerracottaToolInstance getInstance() {
+    return toolInstance;
+  }
+
+  public File getWorkingDir() {
+    return workingDir;
   }
 }

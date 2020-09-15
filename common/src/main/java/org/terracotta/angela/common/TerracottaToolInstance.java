@@ -14,28 +14,18 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
-
 package org.terracotta.angela.common;
 
-/**
- * @author Aurelien Broszniowski
- */
+import java.util.function.Function;
 
-public class ClusterToolException extends RuntimeException {
-  private final String commandOutput;
-  private final int exitValue;
+public class TerracottaToolInstance {
+  private final Function<String[], ToolExecutionResult> operation;
 
-  public ClusterToolException(final String message, final String commandOutput, final int exitValue) {
-    super(message + " [exit value = " + exitValue + "]\n" + commandOutput);
-    this.commandOutput = commandOutput;
-    this.exitValue = exitValue;
+  public TerracottaToolInstance(Function<String[], ToolExecutionResult> operation) {
+    this.operation = operation;
   }
 
-  public String getCommandOutput() {
-    return commandOutput;
-  }
-
-  public int getExitValue() {
-    return exitValue;
+  public ToolExecutionResult execute(String... command) {
+    return operation.apply(command);
   }
 }

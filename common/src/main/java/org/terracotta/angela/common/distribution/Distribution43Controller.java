@@ -20,14 +20,13 @@ package org.terracotta.angela.common.distribution;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terracotta.angela.common.ClusterToolExecutionResult;
-import org.terracotta.angela.common.ConfigToolExecutionResult;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaServerInstance.TerracottaServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
+import org.terracotta.angela.common.ToolExecutionResult;
 import org.terracotta.angela.common.provider.ConfigurationManager;
 import org.terracotta.angela.common.provider.TcConfigManager;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
@@ -46,7 +45,6 @@ import org.zeroturnaround.exec.ProcessResult;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -204,18 +202,15 @@ public class Distribution43Controller extends DistributionController {
   }
 
   @Override
-  public void configure(String clusterName, File kitDir, File workingDir, String licensePath, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, SecurityRootDirectory securityRootDirectory, TerracottaCommandLineEnvironment tcEnv, boolean verbose) {
-    logger.info("There is no licensing step in 4.x");
+  public ToolExecutionResult invokeClusterTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
+                                               TerracottaCommandLineEnvironment env, String... arguments) {
+    throw new UnsupportedOperationException("Running cluster tool is not supported in this distribution version");
   }
 
   @Override
-  public ClusterToolExecutionResult invokeClusterTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Path securityDir, String... arguments) {
-    throw new UnsupportedOperationException("4.x does not have a cluster tool");
-  }
-
-  @Override
-  public ConfigToolExecutionResult invokeConfigTool(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Path securityDir, String... arguments) {
-    throw new UnsupportedOperationException("4.x does not support config tool");
+  public ToolExecutionResult invokeConfigTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
+                                              TerracottaCommandLineEnvironment env, String... arguments) {
+    throw new UnsupportedOperationException("Running config tool is not supported in this distribution version");
   }
 
   /**
@@ -279,7 +274,6 @@ public class Distribution43Controller extends DistributionController {
     throw new IllegalStateException("Can not define Terracotta server Start Command for distribution: " + distribution);
   }
 
-
   @Override
   public TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
     throw new UnsupportedOperationException("NOT YET IMPLEMENTED");
@@ -293,12 +287,12 @@ public class Distribution43Controller extends DistributionController {
   @Override
   public TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir,
                                                    SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv) {
-    throw new UnsupportedOperationException("Running voter is supported not in this distribution version");
+    throw new UnsupportedOperationException("Running voter is not supported in this distribution version");
   }
 
   @Override
   public void stopVoter(TerracottaVoterInstanceProcess terracottaVoterInstanceProcess) {
-    throw new UnsupportedOperationException("Running voter is supported not in this distribution version");
+    throw new UnsupportedOperationException("Running voter is not supported in this distribution version");
   }
   
   @Override

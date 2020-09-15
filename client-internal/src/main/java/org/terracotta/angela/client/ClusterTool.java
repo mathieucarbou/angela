@@ -14,36 +14,130 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
-
 package org.terracotta.angela.client;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.lang.IgniteCallable;
+import org.apache.ignite.lang.IgniteRunnable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.Agent;
+import org.terracotta.angela.agent.kit.LocalKitManager;
+import org.terracotta.angela.client.config.ToolConfigurationContext;
 import org.terracotta.angela.client.util.IgniteClientHelper;
-import org.terracotta.angela.common.ClusterToolExecutionResult;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
+import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.distribution.Distribution;
+import org.terracotta.angela.common.provider.ConfigurationManager;
+import org.terracotta.angela.common.provider.TcConfigManager;
+import org.terracotta.angela.common.tcconfig.License;
+import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
+import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
+import org.terracotta.angela.common.tcconfig.TcConfig;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.InstanceId;
+import org.terracotta.angela.common.topology.Topology;
 
-public class ClusterTool {
-  private final TerracottaServer terracottaServer;
-  private final int ignitePort;
-  private final TerracottaCommandLineEnvironment tcEnv;
-  private final Ignite ignite;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
+import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
+import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
+import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
+
+public class ClusterTool extends Tool {
+  private final static Logger logger = LoggerFactory.getLogger(ClusterTool.class);
+
   private final InstanceId instanceId;
+  private final int ignitePort;
+  private final Ignite ignite;
+  private final ToolConfigurationContext configContext;
+  private final LocalKitManager localKitManager;
 
-  ClusterTool(Ignite ignite, InstanceId instanceId, TerracottaServer terracottaServer, int ignitePort, TerracottaCommandLineEnvironment tcEnv) {
-    this.ignite = ignite;
+  ClusterTool(Ignite ignite, InstanceId instanceId, int ignitePort, ToolConfigurationContext configContext, Tsa tsa) {
+    super(tsa);
     this.instanceId = instanceId;
-    this.terracottaServer = terracottaServer;
     this.ignitePort = ignitePort;
-    this.tcEnv = tcEnv;
+    this.ignite = ignite;
+    this.configContext = configContext;
+    this.localKitManager = new LocalKitManager(configContext.getDistribution());
+    install();
   }
 
-  public ClusterToolExecutionResult executeCommand(String... arguments) {
-    IgniteCallable<ClusterToolExecutionResult> callable = () -> Agent.controller.clusterTool(instanceId, terracottaServer, tcEnv, arguments);
-    return IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
+  @Override
+  public ToolExecutionResult executeCommand(String... command) {
+    IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.clusterTool(instanceId, command);
+    return IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
   }
 
+  public void configure() {
+    Topology topology = tsa.getTsaConfigurationContext().getTopology();
+    TerracottaServer terracottaServer = topology.getConfigurationManager().getServers().get(0);
+    logger.info("Configuring cluster from {}", terracottaServer.getHostname());
+    String clusterName = tsa.getTsaConfigurationContext().getClusterName();
+    if (clusterName == null) {
+      clusterName = instanceId.toString();
+    }
+    String licensePath = tsa.licensePath(terracottaServer);
+    File tmpConfigDir = new File(FileUtils.getTempDirectory(), "tmp-tc-configs");
+
+    if (!tmpConfigDir.mkdir() && !tmpConfigDir.isDirectory()) {
+      throw new RuntimeException("Error creating temporary cluster tool TC config folder : " + tmpConfigDir);
+    }
+    ConfigurationManager configurationProvider = topology.getConfigurationManager();
+    TcConfigManager tcConfigProvider = (TcConfigManager) configurationProvider;
+    List<TcConfig> tcConfigs = tcConfigProvider.getTcConfigs();
+    List<TcConfig> modifiedConfigs = new ArrayList<>();
+    for (TcConfig tcConfig : tcConfigs) {
+      TcConfig modifiedConfig = TcConfig.copy(tcConfig);
+      Map<ServerSymbolicName, Integer> proxyTsaPorts = updateToProxiedPorts();
+      if (!proxyTsaPorts.isEmpty()) {
+        modifiedConfig.updateServerTsaPort(proxyTsaPorts);
+      }
+      modifiedConfig.writeTcConfigFile(tmpConfigDir);
+      modifiedConfigs.add(modifiedConfig);
+    }
+
+    List<String> command = new ArrayList<>(Arrays.asList("configure", "-n", clusterName, "-l", licensePath));
+    for (TcConfig tcConfig : modifiedConfigs) {
+      command.add(tcConfig.getPath());
+    }
+    executeCommand(command.toArray(new String[0]));
+  }
+
+  @Override
+  public void install() {
+    Distribution distribution = configContext.getDistribution();
+    License license = configContext.getLicense();
+    TerracottaCommandLineEnvironment tcEnv = configContext.getCommandLineEnv();
+    SecurityRootDirectory securityRootDirectory = configContext.getSecurityRootDirectory();
+
+    String kitInstallationPath = getEitherOf(KIT_INSTALLATION_DIR, KIT_INSTALLATION_PATH);
+    localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
+
+    IgniteCallable<Boolean> callable = () -> Agent.controller.installClusterTool(instanceId, configContext.getHostName(),
+        distribution, license, localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv);
+    boolean isRemoteInstallationSuccessful = kitInstallationPath == null && IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
+
+    if (!isRemoteInstallationSuccessful) {
+      try {
+        IgniteClientHelper.uploadKit(ignite, configContext.getHostName(), ignitePort, instanceId, distribution,
+            localKitManager.getKitInstallationName(), localKitManager.getKitInstallationPath().toFile());
+        IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
+      } catch (Exception e) {
+        throw new RuntimeException("Cannot upload kit to " + configContext.getHostName(), e);
+      }
+    }
+  }
+
+  @Override
+  public void uninstall() {
+    IgniteRunnable uninstaller = () -> Agent.controller.uninstallClusterTool(instanceId, configContext.getDistribution(), configContext.getHostName(), localKitManager.getKitInstallationName());
+    IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, uninstaller);
+  }
 }

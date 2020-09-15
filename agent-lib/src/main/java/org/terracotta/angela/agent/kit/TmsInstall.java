@@ -39,6 +39,10 @@ public class TmsInstall {
     return kitLocation;
   }
 
+  public File getWorkingDir() {
+    return workingDir;
+  }
+
   public TmsInstall(Distribution distribution, File kitLocation, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
     this.distribution = distribution;
     this.kitLocation = kitLocation;

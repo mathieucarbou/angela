@@ -14,7 +14,6 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
-
 package org.terracotta.angela.agent;
 
 import org.apache.commons.io.IOUtils;
@@ -26,9 +25,8 @@ import org.terracotta.angela.agent.kit.MonitoringInstance;
 import org.terracotta.angela.agent.kit.RemoteKitManager;
 import org.terracotta.angela.agent.kit.TerracottaInstall;
 import org.terracotta.angela.agent.kit.TmsInstall;
+import org.terracotta.angela.agent.kit.ToolInstall;
 import org.terracotta.angela.agent.kit.VoterInstall;
-import org.terracotta.angela.common.ClusterToolExecutionResult;
-import org.terracotta.angela.common.ConfigToolExecutionResult;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance;
 import org.terracotta.angela.common.TerracottaManagementServerState;
@@ -39,6 +37,7 @@ import org.terracotta.angela.common.TerracottaVoterInstance;
 import org.terracotta.angela.common.TerracottaVoterState;
 import org.terracotta.angela.common.ToolExecutionResult;
 import org.terracotta.angela.common.distribution.Distribution;
+import org.terracotta.angela.common.distribution.DistributionController;
 import org.terracotta.angela.common.metrics.HardwareMetric;
 import org.terracotta.angela.common.metrics.MonitoringCommand;
 import org.terracotta.angela.common.net.PortAllocator;
@@ -74,6 +73,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -83,14 +83,15 @@ import static org.terracotta.angela.common.util.FileUtils.setCorrectPermissions;
 /**
  * @author Aurelien Broszniowski
  */
-
 public class AgentController {
-
   private final static Logger logger = LoggerFactory.getLogger(AgentController.class);
 
-  private final Map<InstanceId, TerracottaInstall> kitsInstalls = new HashMap<>();
+  private final Map<InstanceId, TerracottaInstall> tsaInstalls = new HashMap<>();
   private final Map<InstanceId, TmsInstall> tmsInstalls = new HashMap<>();
   private final Map<InstanceId, VoterInstall> voterInstalls = new HashMap<>();
+  private final Map<InstanceId, ToolInstall> clusterToolInstalls = new HashMap<>();
+  private final Map<InstanceId, ToolInstall> configToolInstalls = new HashMap<>();
+
   private final Ignite ignite;
   private final Collection<String> joinedNodes;
   private final int ignitePort;
@@ -110,7 +111,7 @@ public class AgentController {
                             String kitInstallationName,
                             Distribution distribution,
                             Topology topology, String kitInstallationPath) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
 
     File kitLocation;
     File workingDir;
@@ -125,7 +126,7 @@ public class AgentController {
         logger.info("Installing kit for {} from {}", terracottaServer, distribution);
         kitLocation = kitManager.installKit(license, topology.getServersHostnames());
         workingDir = kitManager.getWorkingDir().toFile();
-        terracottaInstall = kitsInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(workingDir, portAllocator));
+        terracottaInstall = tsaInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(workingDir, portAllocator));
       } else {
         kitLocation = new File(kitInstallationPath);
         if (license !=null) {
@@ -139,7 +140,7 @@ public class AgentController {
         }
         workingDir = workingPath.toFile();
 
-        terracottaInstall = kitsInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(new File(kitInstallationPath), portAllocator));
+        terracottaInstall = tsaInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(new File(kitInstallationPath), portAllocator));
       }
     } else {
       kitLocation = terracottaInstall.kitLocation(distribution);
@@ -153,7 +154,7 @@ public class AgentController {
   }
 
   public String getTsaInstallPath(InstanceId instanceId, TerracottaServer terracottaServer) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     TerracottaServerInstance terracottaServerInstance = terracottaInstall.getTerracottaServerInstance(terracottaServer);
     if (terracottaServerInstance == null) {
       throw new IllegalStateException("Server " + terracottaServer + " has not been installed");
@@ -162,7 +163,7 @@ public class AgentController {
   }
 
   public String getTsaKitLocation(InstanceId instanceId, TerracottaServer terracottaServer) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     TerracottaServerInstance terracottaServerInstance = terracottaInstall.getTerracottaServerInstance(terracottaServer);
     if (terracottaServerInstance == null) {
       throw new IllegalStateException("Server " + terracottaServer + " has not been installed");
@@ -171,7 +172,7 @@ public class AgentController {
   }
 
   public String getTsaLicensePath(InstanceId instanceId, TerracottaServer terracottaServer) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     if (terracottaInstall == null) {
       throw new IllegalStateException("Server has not been installed");
     }
@@ -229,6 +230,55 @@ public class AgentController {
     return true;
   }
 
+  public boolean installClusterTool(InstanceId instanceId, String hostName, Distribution distribution,
+                                    License license, String kitInstallationName, SecurityRootDirectory securityRootDirectory,
+                                    TerracottaCommandLineEnvironment tcEnv) {
+    ToolInstall clusterToolInstall = clusterToolInstalls.get(instanceId);
+    if (clusterToolInstall == null) {
+      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
+      if (!kitManager.isKitAvailable()) {
+        return false;
+      }
+
+      logger.info("Installing kit on host {} from {}", hostName, distribution);
+      File kitDir = kitManager.installKit(license, Collections.singletonList(hostName));
+      File workingDir = kitManager.getWorkingDir().toFile();
+      clusterToolInstalls.computeIfAbsent(instanceId, id -> {
+        Function<String[], ToolExecutionResult> operation = command -> {
+          DistributionController distributionController = distribution.createDistributionController();
+          return distributionController.invokeClusterTool(kitDir, workingDir, securityRootDirectory, tcEnv, command);
+        };
+        return new ToolInstall(workingDir, operation);
+      });
+    }
+    return true;
+  }
+
+  public boolean installConfigTool(InstanceId instanceId, String hostName, Distribution distribution,
+                                   License license, String kitInstallationName, SecurityRootDirectory securityRootDirectory,
+                                   TerracottaCommandLineEnvironment tcEnv) {
+    ToolInstall configToolInstall = configToolInstalls.get(instanceId);
+
+    if (configToolInstall == null) {
+      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
+      if (!kitManager.isKitAvailable()) {
+        return false;
+      }
+
+      logger.info("Installing kit for host {} from {}", hostName, distribution);
+      File kitDir = kitManager.installKit(license, Collections.singletonList(hostName));
+      File workingDir = kitManager.getWorkingDir().toFile();
+      configToolInstalls.computeIfAbsent(instanceId, id -> {
+        Function<String[], ToolExecutionResult> operation = command -> {
+          DistributionController distributionController = distribution.createDistributionController();
+          return distributionController.invokeConfigTool(kitDir, workingDir, securityRootDirectory, tcEnv, command);
+        };
+        return new ToolInstall(workingDir, operation);
+      });
+    }
+    return true;
+  }
+
   private void enableTmsSecurity(File tmcProperties, TmsServerSecurityConfig tmsServerSecurityConfig) {
     Properties properties = new Properties();
 
@@ -262,9 +312,7 @@ public class AgentController {
       throw new RuntimeException("Unable to disable security in TMS tmc.properties file", ex);
     }
 
-    tmsServerSecurityConfig.toMap().forEach((key, value) -> {
-        properties.remove(key);
-    });
+    tmsServerSecurityConfig.toMap().forEach((key, value) -> properties.remove(key));
 
     try (OutputStream outputStream = new FileOutputStream(tmcProperties)) {
       properties.store(outputStream, null);
@@ -303,31 +351,24 @@ public class AgentController {
   }
 
   public void uninstallTsa(InstanceId instanceId, Topology topology, TerracottaServer terracottaServer, String kitInstallationName, String kitInstallationPath) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     if (terracottaInstall != null) {
       int installationsCount = terracottaInstall.removeServer(terracottaServer);
-      TmsInstall tmsInstall = tmsInstalls.get(instanceId);
-      VoterInstall voterInstall = voterInstalls.get(instanceId);
-      int numOfVoterInstances = (voterInstall != null ? voterInstall.terracottaVoterInstanceCount() : 0);
-      if (installationsCount == 0 && (tmsInstall == null || tmsInstall.getTerracottaManagementServerInstance() == null) && numOfVoterInstances == 0) {
+      if (installationsCount == 0) {
         File installLocation = terracottaInstall.getRootInstallLocation();
-        logger.info("Uninstalling kit(s) from {}", installLocation);
+        logger.info("Uninstalling kit(s) from {} for TSA", installLocation);
         RemoteKitManager kitManager = new RemoteKitManager(instanceId, topology.getDistribution(), kitInstallationName);
-        // TODO : get log files
-
         if (kitInstallationPath == null) {
           kitManager.deleteInstall(installLocation);
         }
-        kitsInstalls.remove(instanceId);
+        tsaInstalls.remove(instanceId);
       } else {
-        logger.info("Kit install still in use by {} Terracotta servers",
-            installationsCount + (tmsInstall == null ? 0 : tmsInstall.getTerracottaManagementServerInstance() == null ? 0 : 1) + numOfVoterInstances);
+        logger.info("Kit installation still in use by {} instances. Skipping uninstall", tsaInstalls.size());
       }
     } else {
       logger.info("No installed kit for " + topology);
     }
   }
-
 
   public void uninstallTms(InstanceId instanceId, Distribution distribution, TmsServerSecurityConfig tmsServerSecurityConfig,
                            String kitInstallationName, String tmsHostname) {
@@ -338,25 +379,11 @@ public class AgentController {
         disableTmsSecurity(tmcProperties, tmsServerSecurityConfig);
       }
       tmsInstall.removeServer();
-
-      TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
-      int numberOfTerracottaInstances = (terracottaInstall != null ? terracottaInstall.terracottaServerInstanceCount() : 0);
-      VoterInstall voterInstall = voterInstalls.get(instanceId);
-      int numberOfVoterInstances = (voterInstall != null ? voterInstall.terracottaVoterInstanceCount() : 0);
-      if (numberOfTerracottaInstances == 0 && numberOfVoterInstances == 0) {
-        logger.info("Uninstalling kit for " + tmsHostname);
-        RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
-        // TODO : get log files
-
-        kitManager.deleteInstall(tmsInstall.getKitLocation());
-        kitsInstalls.remove(instanceId);
-      } else {
-        if (numberOfTerracottaInstances != 0) {
-          logger.info("Kit install still in use by {} Terracotta servers", numberOfTerracottaInstances);
-        } else {
-          logger.info("Kit install still in use by {} Voters", numberOfVoterInstances);
-        }
-      }
+      tmsInstalls.remove(instanceId);
+      File installLocation = tmsInstall.getWorkingDir();
+      logger.info("Uninstalling kit(s) from {} for TMS", installLocation);
+      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
+      kitManager.deleteInstall(installLocation);
     } else {
       logger.info("No installed kit for " + tmsHostname);
     }
@@ -366,34 +393,53 @@ public class AgentController {
     VoterInstall voterInstall = voterInstalls.get(instanceId);
     if (voterInstall != null) {
       int installationsCount = voterInstall.removeVoter(terracottaVoter);
-      TmsInstall tmsInstall = tmsInstalls.get(instanceId);
-      TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
-      int numOfTerracottaInstances = (terracottaInstall != null ? terracottaInstall.terracottaServerInstanceCount() : 0);
-      if (installationsCount == 0 && (tmsInstall == null || tmsInstall.getTerracottaManagementServerInstance() == null) && numOfTerracottaInstances == 0) {
-        File installLocation = voterInstall.getKitLocation();
-        logger.info("Uninstalling kit(s) from {}", installLocation);
+      if (installationsCount == 0) {
+        File installLocation = voterInstall.getWorkingDir();
+        logger.info("Uninstalling kit(s) from {} for voter", installLocation);
         RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
-        // TODO : get log files
-
         kitManager.deleteInstall(installLocation);
         voterInstalls.remove(instanceId);
       } else {
-        logger.info("Kit install still in use by {} ",
-            installationsCount + (tmsInstall == null ? 0 : tmsInstall.getTerracottaManagementServerInstance() == null ? 0 : 1) + numOfTerracottaInstances);
+        logger.info("Kit installation still in use by {} voter instances. Skipping uninstall", voterInstalls.size());
       }
     } else {
       logger.info("No installed kit for " + terracottaVoter.getHostName());
     }
   }
 
+  public void uninstallClusterTool(InstanceId instanceId, Distribution distribution, String hostName, String kitInstallationName) {
+    ToolInstall clusterToolInstall = clusterToolInstalls.get(instanceId);
+    if (clusterToolInstall != null) {
+      clusterToolInstalls.remove(instanceId);
+      File installLocation = clusterToolInstall.getWorkingDir();
+      logger.info("Uninstalling kit(s) from {} for cluster tool", installLocation);
+      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
+      kitManager.deleteInstall(installLocation);
+    } else {
+      logger.info("No installed kit for " + hostName);
+    }
+  }
+
+  public void uninstallConfigTool(InstanceId instanceId, Distribution distribution, String hostName, String kitInstallationName) {
+    ToolInstall configToolInstall = configToolInstalls.get(instanceId);
+    if (configToolInstall != null) {
+      configToolInstalls.remove(instanceId);
+      File installLocation = configToolInstall.getWorkingDir();
+      logger.info("Uninstalling kit(s) from {} for config tool", installLocation);
+      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
+      kitManager.deleteInstall(installLocation);
+    } else {
+      logger.info("No installed kit for " + hostName);
+    }
+  }
+
   public void createTsa(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, List<String> startUpArgs) {
-    TerracottaServerInstance serverInstance = kitsInstalls.get(instanceId)
-        .getTerracottaServerInstance(terracottaServer);
+    TerracottaServerInstance serverInstance = tsaInstalls.get(instanceId).getTerracottaServerInstance(terracottaServer);
     serverInstance.create(tcEnv, startUpArgs);
   }
 
   public void stopTsa(InstanceId instanceId, TerracottaServer terracottaServer) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     if (terracottaInstall == null) {
       return;
     }
@@ -402,13 +448,12 @@ public class AgentController {
   }
 
   public void waitForTsaInState(InstanceId instanceId, TerracottaServer terracottaServer, Set<TerracottaServerState> wanted) {
-    TerracottaServerInstance serverInstance = kitsInstalls.get(instanceId)
-        .getTerracottaServerInstance(terracottaServer);
+    TerracottaServerInstance serverInstance = tsaInstalls.get(instanceId).getTerracottaServerInstance(terracottaServer);
     serverInstance.waitForState(wanted);
   }
 
   public TerracottaServerState getTsaState(InstanceId instanceId, TerracottaServer terracottaServer) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     if (terracottaInstall == null) {
       return TerracottaServerState.NOT_INSTALLED;
     }
@@ -420,7 +465,7 @@ public class AgentController {
   }
 
   public Map<ServerSymbolicName, Integer> getProxyGroupPortsForServer(InstanceId instanceId, TerracottaServer terracottaServer) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     if (terracottaInstall == null) {
       return Collections.emptyMap();
     }
@@ -436,7 +481,7 @@ public class AgentController {
   }
 
   public void disrupt(InstanceId instanceId, TerracottaServer src, Collection<TerracottaServer> targets) {
-    TerracottaServerInstance serverInstance = kitsInstalls.get(instanceId).getTerracottaServerInstance(src);
+    TerracottaServerInstance serverInstance = tsaInstalls.get(instanceId).getTerracottaServerInstance(src);
     serverInstance.disrupt(targets);
   }
 
@@ -445,7 +490,7 @@ public class AgentController {
   }
 
   public void undisrupt(InstanceId instanceId, TerracottaServer src, Collection<TerracottaServer> targets) {
-    TerracottaServerInstance serverInstance = kitsInstalls.get(instanceId).getTerracottaServerInstance(src);
+    TerracottaServerInstance serverInstance = tsaInstalls.get(instanceId).getTerracottaServerInstance(src);
     serverInstance.undisrupt(targets);
   }
 
@@ -468,36 +513,24 @@ public class AgentController {
   }
 
   public void stopVoter(InstanceId instanceId, TerracottaVoter terracottaVoter) {
-    TerracottaVoterInstance terracottaVoterInstance = voterInstalls.get(instanceId)
-        .getTerracottaVoterInstance(terracottaVoter);
+    TerracottaVoterInstance terracottaVoterInstance = voterInstalls.get(instanceId).getTerracottaVoterInstance(terracottaVoter);
     terracottaVoterInstance.stop();
   }
 
-  public void configure(InstanceId instanceId, TerracottaServer terracottaServer, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts,
-                        String clusterName, SecurityRootDirectory securityRootDirectory, TerracottaCommandLineEnvironment tcEnv, boolean verbose) {
-    TerracottaServerInstance serverInstance = kitsInstalls.get(instanceId)
-        .getTerracottaServerInstance(terracottaServer);
-    String licensePath = getTsaLicensePath(instanceId, terracottaServer);
-    if (clusterName == null) {
-      clusterName = instanceId.toString();
+  public ToolExecutionResult clusterTool(InstanceId instanceId, String... command) {
+    ToolInstall clusterToolInstall = clusterToolInstalls.get(instanceId);
+    if (clusterToolInstall == null) {
+      throw new IllegalStateException("Cluster tool has not been installed");
     }
-    serverInstance.configure(clusterName, licensePath, topology, proxyTsaPorts, securityRootDirectory, tcEnv, verbose);
+    return clusterToolInstall.getInstance().execute(command);
   }
 
-  public ClusterToolExecutionResult clusterTool(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
-    if (terracottaInstall == null) {
-      throw new IllegalStateException("Cannot control cluster tool: server " + terracottaServer.getServerSymbolicName() + " has not been installed");
+  public ToolExecutionResult configTool(InstanceId instanceId, String... command) {
+    ToolInstall configToolInstall = configToolInstalls.get(instanceId);
+    if (configToolInstall == null) {
+      throw new IllegalStateException("Config tool has not been installed");
     }
-    return terracottaInstall.getTerracottaServerInstance(terracottaServer).clusterTool(tcEnv, arguments);
-  }
-
-  public ConfigToolExecutionResult configTool(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
-    if (terracottaInstall == null) {
-      throw new IllegalStateException("Cannot control config tool: server " + terracottaServer.getServerSymbolicName() + " has not been installed");
-    }
-    return terracottaInstall.getTerracottaServerInstance(terracottaServer).configTool(tcEnv, arguments);
+    return configToolInstall.getInstance().execute(command);
   }
 
   public ToolExecutionResult serverJcmd(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
@@ -506,7 +539,7 @@ public class AgentController {
         .contains(tsaState)) {
       throw new IllegalStateException("Cannot control jcmd: server " + terracottaServer.getServerSymbolicName() + " has not started");
     }
-    TerracottaInstall terracottaInstall = kitsInstalls.get(instanceId);
+    TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     return terracottaInstall.getTerracottaServerInstance(terracottaServer).jcmd(tcEnv, arguments);
   }
 
@@ -673,5 +706,4 @@ public class AgentController {
   public Map<String, ?> getNodeAttributes() {
     return ignite.configuration().getUserAttributes();
   }
-
 }

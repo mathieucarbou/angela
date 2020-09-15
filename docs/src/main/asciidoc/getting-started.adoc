@@ -115,13 +115,13 @@ However, nodes are not ready yet, they are started in a new *DIAGNOSTIC* mode, w
 Therefore, after starting the nodes, you need to attach them
 
 ```
-Tsa.attachAll()
+configTool.attachAll()
 ```
 
 And finally:
 
 ```
-Tsa.activateAll()
+configTool.activate()
 ```
 this does several things:
 
@@ -139,13 +139,15 @@ this does several things:
 Those three operations can be chained:
 
 ```
-Tsa.startAll().attachAll().activateAll()
+Tsa.startAll();
+configTool.attachAll();
+configTool.activate()
 ```
 
 When the cluster is up, you can dynamically attach or detach new nodes.
 
 ```
-   tsa.attachNode(0, server("server-3", "localhost")
+   configTool.attachNode(0, server("server-3", "localhost")
           .tsaPort(9610)
           .tsaGroupPort(9611)
           .configRepo("terracotta3/repository")
@@ -157,7 +159,7 @@ When the cluster is up, you can dynamically attach or detach new nodes.
 ```
       // detach the 2nd node (index=1) from the 1st stripe (index=0)
       TerracottaServer toDetach = tsa.getServer(0, 1); // 1st stripe, 2nd node
-      tsa.detachNode(0, 1);
+      configTool.detachNode(0, 1);
       tsa.stop(toDetach);
 ```
 
