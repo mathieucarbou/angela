@@ -29,12 +29,12 @@ jobs:
       jobName: Linux_Java_8
       timeoutInMinutes: 30
       pool: tc_linux_pool
-      options: -B -Dtest.parallel.forks=6 -Djava.test.version=1.8 -Djava.test.vendor=zulu
+      options: -B -Djava.test.version=1.8 -Djava.test.vendor=zulu
       mavenGoals: 'clean verify'
   - template: build-templates/maven-common.yml@templates
     parameters:
       jobName: Windows_Java_8
       timeoutInMinutes: 30
       pool: tc_windows_pool
-      options: -B -Dtest.parallel.forks=4 -Djava.test.version=1.8 -Djava.test.vendor=zulu
+      options: -B -Djava.test.version=1.8 -Djava.test.vendor=zulu
       mavenGoals: 'clean verify'
