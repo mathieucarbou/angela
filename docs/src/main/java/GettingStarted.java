@@ -20,6 +20,7 @@ import org.junit.Test;
 import org.terracotta.angela.client.ClientArray;
 import org.terracotta.angela.client.ClientArrayFuture;
 import org.terracotta.angela.client.ClusterFactory;
+import org.terracotta.angela.client.ConfigTool;
 import org.terracotta.angela.client.Tsa;
 import org.terracotta.angela.client.config.ConfigurationContext;
 import org.terracotta.angela.common.TerracottaServerState;
@@ -35,6 +36,7 @@ import java.util.concurrent.Callable;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.is;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
+import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
 import static org.terracotta.angela.common.clientconfig.ClientArrayConfig.newClientArrayConfig;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
 import static org.terracotta.angela.common.dynamic_cluster.Stripe.stripe;
@@ -107,7 +109,7 @@ public class GettingStarted {
   public void showDynamicTsaApi() throws Exception {
     // tag::showDynamicTsaApi[]
     ConfigurationContext configContext = customConfigurationContext()
-        .tsa(tsa -> tsa
+        .tsa(context -> context
             .topology(
                 new Topology(
                     distribution(version(EHCACHE_VERSION), KIT, TERRACOTTA_OS),
@@ -126,20 +128,16 @@ public class GettingStarted {
                                 .configRepo("terracotta2/repository")
                                 .logs("terracotta2/logs")
                                 .metaData("terracotta2/metadata")
-                                .failoverPriority("availability")
-                        )
-                    )
-                )
-            )
-        );
-
+                                .failoverPriority("availability"))))))
+        .configTool(context -> context.configTool(configTool("configTool", "localhost")));
 
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testSingleStripeFormation", configContext)) {
       Tsa tsa = factory.tsa();
       tsa.startAll(); // <2>
-      tsa.attachAll(); // <3>
+      ConfigTool configTool = factory.configTool();
+      configTool.attachAll(); // <3>
 
-      tsa.attachStripe(server("server-3", "localhost") // <4>
+      configTool.attachStripe(server("server-3", "localhost") // <4>
           .tsaPort(9610)
           .tsaGroupPort(9611)
           .configRepo("terracotta3/repository")
@@ -148,10 +146,10 @@ public class GettingStarted {
           .failoverPriority("availability"));
 
       TerracottaServer toDetach = tsa.getServer(0, 1);
-      tsa.detachNode(0, 1); // <5>
+      configTool.detachNode(0, 1); // <5>
       tsa.stop(toDetach); // <6>
 
-      tsa.activateAll(); // <7>
+      configTool.activate(); // <7>
     }
     // end::showDynamicTsaApi[]
   }

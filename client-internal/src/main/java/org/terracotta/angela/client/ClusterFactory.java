@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.client.config.ClientArrayConfigurationContext;
+import org.terracotta.angela.client.config.ToolConfigurationContext;
 import org.terracotta.angela.client.config.ConfigurationContext;
 import org.terracotta.angela.client.config.MonitoringConfigurationContext;
 import org.terracotta.angela.client.config.TmsConfigurationContext;
@@ -56,20 +57,21 @@ public class ClusterFactory implements AutoCloseable {
   private static final String TMS = "tms";
   private static final String CLIENT_ARRAY = "clientArray";
   private static final String MONITOR = "monitor";
+  private static final String CLUSTER_TOOL = "clusterTool";
+  private static final String CONFIG_TOOL = "configTool";
   private static final String VOTER = "voter";
   private static final DateTimeFormatter PATH_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-hhmmss");
 
   private final List<AutoCloseable> controllers = new ArrayList<>();
   private final String idPrefix;
   private final AtomicInteger instanceIndex;
-  private final Map<String, Collection<InstanceId>> nodeToInstanceId = new HashMap<>();
+  private final Map<String, String> agentsInstance = new HashMap<>();
   private final ConfigurationContext configurationContext;
 
   private Agent localAgent;
   private transient RemoteAgentLauncher remoteAgentLauncher;
   private InstanceId monitorInstanceId;
 
-  private Map<String, String> agentsInstance = new HashMap<>();
   private final int igniteDiscoveryPort;
   private final int igniteComPort;
   private final PortAllocator portAllocator;
@@ -150,10 +152,35 @@ public class ClusterFactory implements AutoCloseable {
     return tms;
   }
 
+  public ClusterTool clusterTool() {
+    ToolConfigurationContext configContext = configurationContext.clusterTool();
+    InstanceId instanceId = init(CLUSTER_TOOL, Collections.singleton(configContext.getHostName()));
+    Tsa tsa = controllers.stream()
+        .filter(controller -> controller instanceof Tsa)
+        .map(autoCloseable -> (Tsa) autoCloseable)
+        .findAny()
+        .orElseThrow(() -> new IllegalStateException("Tsa should be defined before cluster tool in ConfigurationContext"));
+    ClusterTool clusterTool = new ClusterTool(localAgent.getIgnite(), instanceId, igniteDiscoveryPort, configContext, tsa);
+    controllers.add(clusterTool);
+    return clusterTool;
+  }
+
+  public ConfigTool configTool() {
+    ToolConfigurationContext configContext = configurationContext.configTool();
+    InstanceId instanceId = init(CONFIG_TOOL, Collections.singleton(configContext.getHostName()));
+    Tsa tsa = controllers.stream()
+        .filter(controller -> controller instanceof Tsa)
+        .map(autoCloseable -> (Tsa) autoCloseable)
+        .findAny()
+        .orElseThrow(() -> new IllegalStateException("Tsa should be defined before config tool in ConfigurationContext"));
+    ConfigTool configTool = new ConfigTool(localAgent.getIgnite(), instanceId, igniteDiscoveryPort, configContext, tsa);
+    controllers.add(configTool);
+    return configTool;
+  }
+
   public Voter voter() {
     VoterConfigurationContext voterConfigurationContext = configurationContext.voter();
     InstanceId instanceId = init(VOTER, voterConfigurationContext.getHostNames());
-
     Voter voter = new Voter(localAgent.getIgnite(), igniteDiscoveryPort, instanceId, voterConfigurationContext);
     controllers.add(voter);
     return voter;
@@ -202,8 +229,6 @@ public class ClusterFactory implements AutoCloseable {
         }
       }
       controllers.clear();
-
-      nodeToInstanceId.clear();
 
       monitorInstanceId = null;
 

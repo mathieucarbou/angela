@@ -44,8 +44,8 @@ public class VoterInstall {
     this.tcEnv = tcEnv;
   }
 
-  public File getKitLocation() {
-    return kitLocation;
+  public File getWorkingDir() {
+    return workingDir;
   }
   
   public TerracottaVoterInstance getTerracottaVoterInstance(TerracottaVoter terracottaVoter) {

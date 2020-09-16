@@ -16,32 +16,24 @@
  */
 package org.terracotta.angela.common;
 
-import java.util.List;
+public class TerracottaConfigTool {
+  private final String id;
+  private final String hostName;
 
-public class ToolExecutionResult {
-  private final int exitStatus;
-  private final List<String> output;
-
-  public ToolExecutionResult(int exitStatus, List<String> output) {
-    this.exitStatus = exitStatus;
-    this.output = output;
+  private TerracottaConfigTool(String id, String hostName) {
+    this.id = id;
+    this.hostName = hostName;
   }
 
-  public int getExitStatus() {
-    return exitStatus;
+  public static TerracottaConfigTool configTool(String id, String hostName) {
+    return new TerracottaConfigTool(id, hostName);
   }
 
-  public List<String> getOutput() {
-    return output;
+  public String getId() {
+    return id;
   }
 
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("rc=").append(exitStatus).append(" --- --- [start output] --- --- ---\n");
-    for (String s : output) {
-      sb.append(s).append("\n");
-    }
-    return sb.append("--- --- --- [ end output ] --- --- ---\n").toString();
+  public String getHostName() {
+    return hostName;
   }
 }

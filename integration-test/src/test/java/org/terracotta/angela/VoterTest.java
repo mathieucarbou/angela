@@ -18,14 +18,17 @@ package org.terracotta.angela;
 
 import org.junit.Test;
 import org.terracotta.angela.client.ClusterFactory;
+import org.terracotta.angela.client.ConfigTool;
 import org.terracotta.angela.client.Voter;
 import org.terracotta.angela.client.config.ConfigurationContext;
+import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.topology.Topology;
 
 import java.time.Duration;
 
 import static org.awaitility.Awaitility.await;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
+import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
 import static org.terracotta.angela.common.TerracottaVoter.voter;
 import static org.terracotta.angela.common.TerracottaVoterState.CONNECTED_TO_ACTIVE;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
@@ -39,11 +42,12 @@ import static org.terracotta.angela.common.topology.Version.version;
 public class VoterTest {
   @Test
   public void testVoterStartup() throws Exception {
+    Distribution distribution = distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS);
     ConfigurationContext configContext = customConfigurationContext()
         .tsa(tsa -> tsa
             .topology(
                 new Topology(
-                    distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS),
+                    distribution,
                     dynamicCluster(
                         stripe(
                             server("server-1", "localhost")
@@ -59,18 +63,16 @@ public class VoterTest {
                                 .configRepo("terracotta2/repository")
                                 .logs("terracotta2/logs")
                                 .metaData("terracotta2/metadata")
-                                .failoverPriority("consistency:1")
-                        )
-                    )
-                )
-            )
-        ).voter(voter -> voter
-            .distribution(distribution(version("3.9-SNAPSHOT"), KIT, TERRACOTTA_OS))
-            .addVoter(voter("voter", "localhost", "localhost:9410", "localhost:9510"))
-        );
+                                .failoverPriority("consistency:1"))))))
+        .voter(voter -> voter.distribution(distribution).addVoter(voter("voter", "localhost", "localhost:9410", "localhost:9510")))
+        .configTool(context -> context.distribution(distribution).configTool(configTool("config-tool", "localhost")));
 
     try (ClusterFactory factory = new ClusterFactory("VoterTest::testVoterStartup", configContext)) {
-      factory.tsa().startAll().attachAll().activateAll();
+      factory.tsa().startAll();
+      ConfigTool configTool = factory.configTool();
+      configTool.attachAll();
+      configTool.activate();
+
       Voter voter = factory.voter();
       voter.startAll();
       await()

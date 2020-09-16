@@ -76,13 +76,14 @@
         <groupId>org.apache.maven.plugins</groupId>
         <configuration>
           <argLine>-Xmx1024m</argLine>
-          <systemProperties>
+          <systemPropertyVariables>
             <angela.rootDir>${project.build.directory}/angela</angela.rootDir>
             <angela.java.vendor/> <!-- use any vendor for the tests -->
-            <jdk.security.allowNonCaAnchor>true</jdk.security.allowNonCaAnchor>
-            <!--              <angela.igniteLogging>true</angela.igniteLogging>-->
-            <!--              <angela.java.opts>-agentlib:jdwp=transport=dt_socket,server=n,address=c02yj2f2jgh6.home:5005,suspend=n</angela.java.opts>-->
-          </systemProperties>
+            <angela.igniteLogging>true</angela.igniteLogging>
+            <angela.tsa.fullLogging>true</angela.tsa.fullLogging>
+            <angela.kitCopy>false</angela.kitCopy>
+            <angela.skipUninstall>false</angela.skipUninstall>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
     </plugins>

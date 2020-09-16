@@ -14,11 +14,9 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
-
 package org.terracotta.angela.client;
 
 import org.apache.ignite.Ignite;
-import org.apache.ignite.lang.IgniteCallable;
 import org.apache.ignite.lang.IgniteRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,16 +26,13 @@ import org.terracotta.angela.client.config.TsaConfigurationContext;
 import org.terracotta.angela.client.filesystem.RemoteFolder;
 import org.terracotta.angela.client.net.DisruptionController;
 import org.terracotta.angela.client.util.IgniteClientHelper;
-import org.terracotta.angela.common.ConfigToolExecutionResult;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.net.PortAllocator;
 import org.terracotta.angela.common.provider.ConfigurationManager;
-import org.terracotta.angela.common.provider.DynamicConfigManager;
 import org.terracotta.angela.common.provider.TcConfigManager;
 import org.terracotta.angela.common.tcconfig.License;
-import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TcConfig;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
@@ -51,11 +46,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -76,7 +68,6 @@ import static org.terracotta.angela.common.TerracottaServerState.STOPPED;
 /**
  * @author Aurelien Broszniowski
  */
-
 public class Tsa implements AutoCloseable {
 
   private final static Logger logger = LoggerFactory.getLogger(Tsa.class);
@@ -105,20 +96,24 @@ public class Tsa implements AutoCloseable {
     return tsaConfigurationContext;
   }
 
-  public ClusterTool clusterTool(TerracottaServer terracottaServer) {
-    TerracottaServerState terracottaServerState = getState(terracottaServer);
-    if (terracottaServerState == null) {
-      throw new IllegalStateException("Cannot control cluster tool: server " + terracottaServer.getServerSymbolicName() + " has not been installed");
-    }
-    return new ClusterTool(ignite, instanceId, terracottaServer, ignitePort, tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CLUSTER_TOOL));
+  public DisruptionController getDisruptionController() {
+    return disruptionController;
   }
 
-  public ConfigTool configTool(TerracottaServer terracottaServer) {
-    TerracottaServerState terracottaServerState = getState(terracottaServer);
-    if (terracottaServerState == null) {
-      throw new IllegalStateException("Cannot control config tool: server " + terracottaServer.getServerSymbolicName() + " has not been installed");
-    }
-    return new ConfigTool(ignite, instanceId, terracottaServer, ignitePort, tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL));
+  public PortAllocator getPortAllocator() {
+    return portAllocator;
+  }
+
+  public Ignite getIgnite() {
+    return ignite;
+  }
+
+  public InstanceId getInstanceId() {
+    return instanceId;
+  }
+
+  public int getIgnitePort() {
+    return ignitePort;
   }
 
   public String licensePath(TerracottaServer terracottaServer) {
@@ -130,7 +125,7 @@ public class Tsa implements AutoCloseable {
         .getTsaLicensePath(instanceId, terracottaServer));
   }
 
-  private void installAll() {
+  void installAll() {
     Topology topology = tsaConfigurationContext.getTopology();
     ConfigurationManager configurationManager = topology.getConfigurationManager();
     for (TerracottaServer terracottaServer : configurationManager.getServers()) {
@@ -138,7 +133,7 @@ public class Tsa implements AutoCloseable {
     }
   }
 
-  private void install(TerracottaServer terracottaServer, Topology topology) {
+  void install(TerracottaServer terracottaServer, Topology topology) {
     installWithKitManager(terracottaServer, topology, this.localKitManager);
   }
 
@@ -297,178 +292,9 @@ public class Tsa implements AutoCloseable {
     return this;
   }
 
-  public Tsa licenseAll() {
-    licenseAll(null, false);
-    return this;
-  }
-
-  public Tsa licenseAll(SecurityRootDirectory securityRootDirectory) {
-    licenseAll(securityRootDirectory, false);
-    return this;
-  }
-
-  public Tsa licenseAll(SecurityRootDirectory securityRootDirectory, boolean verbose) {
-    ConfigurationManager configurationManager = tsaConfigurationContext.getTopology().getConfigurationManager();
-    Set<ServerSymbolicName> notStartedServers = new HashSet<>();
-    for (TerracottaServer terracottaServer : configurationManager.getServers()) {
-      TerracottaServerState terracottaServerState = getState(terracottaServer);
-      if (terracottaServerState != STARTED_AS_ACTIVE && terracottaServerState != STARTED_AS_PASSIVE) {
-        notStartedServers.add(terracottaServer.getServerSymbolicName());
-      }
-    }
-    if (!notStartedServers.isEmpty()) {
-      throw new IllegalStateException("The following Terracotta servers are not started : " + notStartedServers);
-    }
-
-    if (configurationManager instanceof TcConfigManager) {
-      final Map<ServerSymbolicName, Integer> proxyTsaPorts;
-      if (tsaConfigurationContext.getTopology().isNetDisruptionEnabled()) {
-        proxyTsaPorts = updateToProxiedPorts();
-      } else {
-        proxyTsaPorts = new HashMap<>();
-      }
-
-      TerracottaServer terracottaServer = tsaConfigurationContext.getTopology()
-          .getConfigurationManager()
-          .getServers()
-          .get(0);
-      logger.info("Configuring cluster from {}", terracottaServer.getHostname());
-      IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, () -> {
-        TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CLUSTER_TOOL);
-        Agent.controller.configure(instanceId, terracottaServer, tsaConfigurationContext.getTopology(), proxyTsaPorts, tsaConfigurationContext
-            .getClusterName(), securityRootDirectory, cliEnv, verbose);
-      });
-      return this;
-    } else {
-      throw new IllegalStateException();
-    }
-  }
-
-  public Map<ServerSymbolicName, Integer> updateToProxiedPorts() {
-    return disruptionController.updateTsaPortsWithProxy(tsaConfigurationContext.getTopology(), portAllocator);
-  }
-
-  public Tsa activateAll() {
-    Topology topology = tsaConfigurationContext.getTopology();
-    ConfigurationManager configurationManager = topology.getConfigurationManager();
-    Set<ServerSymbolicName> notStartedServers = new HashSet<>();
-    for (TerracottaServer terracottaServer : configurationManager.getServers()) {
-      TerracottaServerState terracottaServerState = getState(terracottaServer);
-      if (terracottaServerState != STARTED_IN_DIAGNOSTIC_MODE) {
-        notStartedServers.add(terracottaServer.getServerSymbolicName());
-      }
-    }
-    if (!notStartedServers.isEmpty()) {
-      throw new IllegalStateException("The following Terracotta servers are not started : " + notStartedServers);
-    }
-
-    if (configurationManager instanceof DynamicConfigManager) {
-      TerracottaServer terracottaServer = configurationManager.getServers().get(0);
-      logger.info("Activating cluster from {}", terracottaServer.getHostname());
-      TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
-
-      IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
-          () -> Agent.controller.configure(instanceId, terracottaServer, topology, null, tsaConfigurationContext.getClusterName(), null, cliEnv, false));
-      return this;
-    } else {
-      throw new IllegalStateException("Topology doesn't belong to dynamic cluster");
-    }
-  }
-
-  public void setClientToServerDisruptionLinks(TerracottaServer terracottaServer) {
-    Topology topology = tsaConfigurationContext.getTopology();
-    ConfigurationManager configurationManager = topology.getConfigurationManager();
-    if (topology.isNetDisruptionEnabled() && (configurationManager instanceof DynamicConfigManager)) {
-      TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
-      // Disabling client redirection from passive to current active.
-      List<String> arguments = new ArrayList<>();
-      String property = "stripe.1.node.1.tc-properties." + "l2.l1redirect.enabled=false";
-      arguments.add("set");
-      arguments.add("-s");
-      arguments.add(terracottaServer.getHostname() + ":" + terracottaServer.getTsaPort());
-      arguments.add("-c");
-      arguments.add(property);
-      IgniteCallable<ConfigToolExecutionResult> callable = () -> {
-        return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv, arguments.toArray(new String[0]));
-      };
-      ConfigToolExecutionResult executionResult = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
-      if (executionResult.getExitStatus() != 0) {
-        throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
-      }
-
-      // Creating disruption links for client to server disruption
-      Map<ServerSymbolicName, Integer> proxyMap = updateToProxiedPorts();
-      int proxyPort = proxyMap.get(terracottaServer.getServerSymbolicName());
-      String publicHostName = "stripe.1.node.1.public-hostname=" + terracottaServer.getHostName();
-      String publicPort = "stripe.1.node.1.public-port=" + proxyPort;
-
-      List<String> args = new ArrayList<>();
-      args.add("set");
-      args.add("-s");
-      args.add(terracottaServer.getHostname() + ":" + terracottaServer.getTsaPort());
-      args.add("-c");
-      args.add(publicHostName);
-      args.add("-c");
-      args.add(publicPort);
-      callable = () -> {
-        return Agent.controller.configTool(this.instanceId, terracottaServer, cliEnv, args.toArray(new String[0]));
-      };
-      executionResult = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, callable);
-      if (executionResult.getExitStatus() != 0) {
-        throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
-      }
-    } else {
-      throw new IllegalStateException("Either the network disruption is not enabled for the topology or " +
-          "the topology doesn't belong to dynamic cluster");
-    }
-  }
-
-  public void setServerToServerDisruptionLinks(int stripeId, int size) {
-    Topology topology = tsaConfigurationContext.getTopology();
-    ConfigurationManager configurationManager = topology.getConfigurationManager();
-    if (topology.isNetDisruptionEnabled() && (configurationManager instanceof DynamicConfigManager)) {
-      TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.CONFIG_TOOL);
-      List<TerracottaServer> stripeServerList = getTsaConfigurationContext().getTopology().getStripes().get(stripeId - 1);
-      for (int j = 0; j < size; ++j) {
-        TerracottaServer server = stripeServerList.get(j);
-        Map<ServerSymbolicName, Integer> proxyGroupPortMapping = getProxyGroupPortsForServer(server);
-        int nodeId = j + 1;
-        StringBuilder propertyBuilder = new StringBuilder();
-        propertyBuilder.append("stripe." + stripeId + ".node." + nodeId + ".tc-properties.test-proxy-group-port=");
-        propertyBuilder.append("\"");
-        for (Map.Entry<ServerSymbolicName, Integer> entry : proxyGroupPortMapping.entrySet()) {
-          propertyBuilder.append(entry.getKey().getSymbolicName());
-          propertyBuilder.append("->");
-          propertyBuilder.append(entry.getValue());
-          propertyBuilder.append("#");
-        }
-        propertyBuilder.deleteCharAt(propertyBuilder.lastIndexOf("#"));
-        propertyBuilder.append("\"");
-        
-        IgniteCallable<ConfigToolExecutionResult> callable = () -> {
-          return Agent.controller.configTool(this.instanceId, server, cliEnv,
-              "set", "-s", server.getHostName() + ":" + server.getTsaPort(),
-              "-c", propertyBuilder.toString());
-        };
-        ConfigToolExecutionResult executionResult = IgniteClientHelper.executeRemotely(ignite, server.getHostname(), ignitePort, callable);
-        if (executionResult.getExitStatus() != 0) {
-          throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
-        }
-      }
-    } else {
-      throw new IllegalStateException("Either the network disruption is not enabled for the topology or " +
-          "the topology doesn't belong to dynamic cluster");
-    }
-  }
-  
   public TerracottaServerState getState(TerracottaServer terracottaServer) {
     return IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
         () -> Agent.controller.getTsaState(instanceId, terracottaServer));
-  }
-
-  public Map<ServerSymbolicName, Integer> getProxyGroupPortsForServer(TerracottaServer terracottaServer) {
-    return IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, () -> Agent.controller
-        .getProxyGroupPortsForServer(instanceId, terracottaServer));
   }
 
   public Collection<TerracottaServer> getStarted() {
@@ -683,227 +509,6 @@ public class Tsa implements AutoCloseable {
       exceptions.forEach(re::addSuppressed);
       throw re;
     }
-  }
-
-  public List<ConfigToolExecutionResult> attachStripe(TerracottaServer... newServers) {
-    if (newServers == null || newServers.length == 0) {
-      throw new IllegalArgumentException("Servers list should be non-null and non-empty");
-    }
-
-    for (TerracottaServer server : newServers) {
-      install(server, tsaConfigurationContext.getTopology());
-      start(server);
-    }
-    tsaConfigurationContext.getTopology().addStripe(newServers);
-
-    List<ConfigToolExecutionResult> results = new ArrayList<>();
-    if (newServers.length > 1) {
-      List<String> command = new ArrayList<>();
-      command.add("attach");
-      command.add("-t");
-      command.add("node");
-      command.add("-d");
-      command.add(newServers[0].getHostPort());
-      for (int i = 1; i < newServers.length; i++) {
-        command.add("-s");
-        command.add(newServers[i].getHostPort());
-      }
-      ConfigToolExecutionResult result = configTool(newServers[0]).executeCommand(command.toArray(new String[0]));
-      if (result.getExitStatus() != 0) {
-        throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + result);
-      }
-      results.add(result);
-    }
-
-    List<String> command = new ArrayList<>();
-    command.add("attach");
-    command.add("-t");
-    command.add("stripe");
-
-    List<List<TerracottaServer>> stripes = tsaConfigurationContext.getTopology().getStripes();
-    TerracottaServer existingServer = stripes.get(0).get(0);
-    command.add("-d");
-    command.add(existingServer.getHostPort());
-    for (TerracottaServer newServer : newServers) {
-      command.add("-s");
-      command.add(newServer.getHostPort());
-    }
-
-    ConfigToolExecutionResult result = configTool(existingServer).executeCommand(command.toArray(new String[0]));
-    if (result.getExitStatus() != 0) {
-      throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + result);
-    }
-    results.add(result);
-    return results;
-  }
-
-  public ConfigToolExecutionResult detachStripe(int stripeIndex) {
-    List<List<TerracottaServer>> stripes = tsaConfigurationContext.getTopology().getStripes();
-    if (stripeIndex < -1 || stripeIndex >= stripes.size()) {
-      throw new IllegalArgumentException("stripeIndex should be a non-negative integer less than stripe count");
-    }
-
-    if (stripes.size() == 1) {
-      throw new IllegalArgumentException("Cannot delete the only stripe from cluster");
-    }
-
-    List<String> command = new ArrayList<>();
-    command.add("detach");
-    command.add("-t");
-    command.add("stripe");
-
-    List<TerracottaServer> toDetachStripe = stripes.remove(stripeIndex);
-    TerracottaServer destination = stripes.get(0).get(0);
-    command.add("-d");
-    command.add(destination.getHostPort());
-
-    command.add("-s");
-    command.add(toDetachStripe.get(0).getHostPort());
-
-    ConfigToolExecutionResult result = configTool(destination).executeCommand(command.toArray(new String[0]));
-    if (result.getExitStatus() != 0) {
-      throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + result);
-    }
-
-    tsaConfigurationContext.getTopology().removeStripe(stripeIndex);
-    return result;
-  }
-
-  public ConfigToolExecutionResult attachNode(int stripeIndex, TerracottaServer newServer) {
-    List<List<TerracottaServer>> stripes = tsaConfigurationContext.getTopology().getStripes();
-    if (stripeIndex < -1 || stripeIndex >= stripes.size()) {
-      throw new IllegalArgumentException("stripeIndex should be a non-negative integer less than stripe count");
-    }
-
-    if (newServer == null) {
-      throw new IllegalArgumentException("Server should be non-null");
-    }
-
-    install(newServer, tsaConfigurationContext.getTopology());
-    start(newServer);
-    tsaConfigurationContext.getTopology().addServer(stripeIndex, newServer);
-
-    List<String> command = new ArrayList<>();
-    command.add("attach");
-    command.add("-t");
-    command.add("node");
-
-    TerracottaServer existingServer = stripes.get(stripeIndex).get(0);
-    command.add("-d");
-    command.add(existingServer.getHostPort());
-
-    command.add("-s");
-    command.add(newServer.getHostPort());
-
-    ConfigToolExecutionResult result = configTool(existingServer).executeCommand(command.toArray(new String[0]));
-    if (result.getExitStatus() != 0) {
-      throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + result);
-    }
-    return result;
-  }
-
-  public ConfigToolExecutionResult detachNode(int stripeIndex, int serverIndex) {
-    List<List<TerracottaServer>> stripes = tsaConfigurationContext.getTopology().getStripes();
-    if (stripeIndex < -1 || stripeIndex >= stripes.size()) {
-      throw new IllegalArgumentException("stripeIndex should be a non-negative integer less than stripe count");
-    }
-
-    List<TerracottaServer> servers = stripes.remove(stripeIndex);
-    if (serverIndex < -1 || serverIndex >= servers.size()) {
-      throw new IllegalArgumentException("serverIndex should be a non-negative integer less than server count");
-    }
-
-    TerracottaServer toDetach = servers.remove(serverIndex);
-    if (servers.size() == 0 && stripes.size() == 0) {
-      throw new IllegalArgumentException("Cannot delete the only server from the cluster");
-    }
-
-    TerracottaServer destination;
-    if (stripes.size() != 0) {
-      destination = stripes.get(0).get(0);
-    } else {
-      destination = servers.get(0);
-    }
-
-    List<String> command = new ArrayList<>();
-    command.add("detach");
-    command.add("-t");
-    command.add("node");
-    command.add("-d");
-    command.add(destination.getHostPort());
-    command.add("-s");
-    command.add(toDetach.getHostPort());
-
-    ConfigToolExecutionResult result = configTool(destination).executeCommand(command.toArray(new String[0]));
-    if (result.getExitStatus() != 0) {
-      throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + result);
-    }
-
-    tsaConfigurationContext.getTopology().removeServer(stripeIndex, serverIndex);
-    return result;
-  }
-
-  public Tsa attachAll() {
-    Topology topology = tsaConfigurationContext.getTopology();
-    if (topology.isNetDisruptionEnabled()) {
-      for (TerracottaServer terracottaServer : topology.getServers()) {
-        setClientToServerDisruptionLinks(terracottaServer);
-      }
-    }
-    List<List<TerracottaServer>> stripes = topology.getStripes();
-
-    for (List<TerracottaServer> stripe : stripes) {
-      if (stripe.size() > 1) {
-        // Attach all servers in a stripe to form individual stripes
-        for (int i = 1; i < stripe.size(); i++) {
-          List<String> command = new ArrayList<>();
-          command.add("attach");
-          command.add("-t");
-          command.add("node");
-          command.add("-d");
-          command.add(stripe.get(0).getHostPort());
-          command.add("-s");
-          command.add(stripe.get(i).getHostPort());
-
-          ConfigToolExecutionResult result = configTool(stripe.get(0)).executeCommand(command.toArray(new String[0]));
-          if (result.getExitStatus() != 0) {
-            throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + result);
-          }
-        }
-      }
-    }
-
-    if (stripes.size() > 1) {
-      for (int i = 1; i < stripes.size(); i++) {
-        // Attach all stripes together to form the cluster
-        List<String> command = new ArrayList<>();
-        command.add("attach");
-        command.add("-t");
-        command.add("stripe");
-        command.add("-d");
-        command.add(stripes.get(0).get(0).getHostPort());
-
-        List<TerracottaServer> stripe = stripes.get(i);
-        command.add("-s");
-        command.add(stripe.get(0).getHostPort());
-
-        ConfigToolExecutionResult result = configTool(stripes.get(0)
-            .get(0)).executeCommand(command.toArray(new String[0]));
-        if (result.getExitStatus() != 0) {
-          throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + result);
-        }
-      }
-    }
-    
-    if (topology.isNetDisruptionEnabled()) {
-      for (int i = 1; i <= stripes.size(); ++i) {
-        if (stripes.get(i - 1).size() > 1) {
-          setServerToServerDisruptionLinks(i, stripes.get(i - 1).size());
-        }
-      }
-    }
-
-    return this;
   }
 
   @Override

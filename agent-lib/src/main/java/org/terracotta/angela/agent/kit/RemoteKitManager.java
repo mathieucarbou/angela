@@ -96,6 +96,6 @@ public class RemoteKitManager extends KitManager {
 
   public void deleteInstall(File installLocation) {
     logger.info("Deleting installation in {}", installLocation.getAbsolutePath());
-    FileUtils.deleteTree(installLocation.toPath());
+    FileUtils.deleteQuietly(installLocation.toPath());
   }
 }
