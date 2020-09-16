@@ -95,9 +95,8 @@ public class ClusterTool extends Tool {
     List<TcConfig> modifiedConfigs = new ArrayList<>();
     for (TcConfig tcConfig : tcConfigs) {
       TcConfig modifiedConfig = TcConfig.copy(tcConfig);
-      Map<ServerSymbolicName, Integer> proxyTsaPorts = updateToProxiedPorts();
-      if (!proxyTsaPorts.isEmpty()) {
-        modifiedConfig.updateServerTsaPort(proxyTsaPorts);
+      if (topology.isNetDisruptionEnabled()) {
+        modifiedConfig.updateServerTsaPort(updateToProxiedPorts());
       }
       modifiedConfig.writeTcConfigFile(tmpConfigDir);
       modifiedConfigs.add(modifiedConfig);
