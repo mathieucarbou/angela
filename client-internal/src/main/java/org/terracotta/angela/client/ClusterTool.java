@@ -33,7 +33,6 @@ import org.terracotta.angela.common.provider.ConfigurationManager;
 import org.terracotta.angela.common.provider.TcConfigManager;
 import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
-import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TcConfig;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.InstanceId;
@@ -43,14 +42,14 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
 import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
+import static org.terracotta.angela.common.AngelaProperties.SKIP_UNINSTALL;
 import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 
-public class ClusterTool extends Tool {
+public class ClusterTool implements AutoCloseable {
   private final static Logger logger = LoggerFactory.getLogger(ClusterTool.class);
 
   private final InstanceId instanceId;
@@ -58,18 +57,18 @@ public class ClusterTool extends Tool {
   private final Ignite ignite;
   private final ToolConfigurationContext configContext;
   private final LocalKitManager localKitManager;
+  private final Tsa tsa;
 
   ClusterTool(Ignite ignite, InstanceId instanceId, int ignitePort, ToolConfigurationContext configContext, Tsa tsa) {
-    super(tsa);
     this.instanceId = instanceId;
     this.ignitePort = ignitePort;
     this.ignite = ignite;
     this.configContext = configContext;
     this.localKitManager = new LocalKitManager(configContext.getDistribution());
+    this.tsa = tsa;
     install();
   }
 
-  @Override
   public ToolExecutionResult executeCommand(String... command) {
     IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.clusterTool(instanceId, command);
     return IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
@@ -96,7 +95,7 @@ public class ClusterTool extends Tool {
     for (TcConfig tcConfig : tcConfigs) {
       TcConfig modifiedConfig = TcConfig.copy(tcConfig);
       if (topology.isNetDisruptionEnabled()) {
-        modifiedConfig.updateServerTsaPort(updateToProxiedPorts());
+        modifiedConfig.updateServerTsaPort(tsa.updateToProxiedPorts());
       }
       modifiedConfig.writeTcConfigFile(tmpConfigDir);
       modifiedConfigs.add(modifiedConfig);
@@ -109,7 +108,6 @@ public class ClusterTool extends Tool {
     executeCommand(command.toArray(new String[0]));
   }
 
-  @Override
   public void install() {
     Distribution distribution = configContext.getDistribution();
     License license = configContext.getLicense();
@@ -134,9 +132,15 @@ public class ClusterTool extends Tool {
     }
   }
 
-  @Override
   public void uninstall() {
     IgniteRunnable uninstaller = () -> Agent.controller.uninstallClusterTool(instanceId, configContext.getDistribution(), configContext.getHostName(), localKitManager.getKitInstallationName());
     IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, uninstaller);
+  }
+
+  @Override
+  public void close() {
+    if (!SKIP_UNINSTALL.getBooleanValue()) {
+      uninstall();
+    }
   }
 }
