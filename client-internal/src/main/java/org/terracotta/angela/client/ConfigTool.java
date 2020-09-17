@@ -44,9 +44,10 @@ import java.util.Map;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
 import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
+import static org.terracotta.angela.common.AngelaProperties.SKIP_UNINSTALL;
 import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 
-public class ConfigTool extends Tool {
+public class ConfigTool implements AutoCloseable {
   private final static Logger logger = LoggerFactory.getLogger(ConfigTool.class);
 
   private final int ignitePort;
@@ -54,18 +55,18 @@ public class ConfigTool extends Tool {
   private final Ignite ignite;
   private final InstanceId instanceId;
   private final LocalKitManager localKitManager;
+  private final Tsa tsa;
 
   ConfigTool(Ignite ignite, InstanceId instanceId, int ignitePort, ToolConfigurationContext configContext, Tsa tsa) {
-    super(tsa);
     this.ignite = ignite;
     this.instanceId = instanceId;
     this.ignitePort = ignitePort;
     this.configContext = configContext;
     this.localKitManager = new LocalKitManager(configContext.getDistribution());
+    this.tsa = tsa;
     install();
   }
 
-  @Override
   public ToolExecutionResult executeCommand(String... arguments) {
     IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.configTool(instanceId, arguments);
     return IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
@@ -306,7 +307,6 @@ public class ConfigTool extends Tool {
     }
   }
 
-  @Override
   public void install() {
     Distribution distribution = configContext.getDistribution();
     License license = configContext.getLicense();
@@ -331,7 +331,6 @@ public class ConfigTool extends Tool {
     }
   }
 
-  @Override
   public void uninstall() {
     IgniteRunnable uninstaller = () -> Agent.controller.uninstallConfigTool(instanceId, configContext.getDistribution(), configContext.getHostName(), localKitManager.getKitInstallationName());
     IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, uninstaller);
@@ -352,7 +351,7 @@ public class ConfigTool extends Tool {
     }
 
     // Creating disruption links for client to server disruption
-    Map<ServerSymbolicName, Integer> proxyMap = updateToProxiedPorts();
+    Map<ServerSymbolicName, Integer> proxyMap = tsa.updateToProxiedPorts();
     int proxyPort = proxyMap.get(terracottaServer.getServerSymbolicName());
     String publicHostName = "stripe.1.node.1.public-hostname=" + terracottaServer.getHostName();
     String publicPort = "stripe.1.node.1.public-port=" + proxyPort;
@@ -376,7 +375,7 @@ public class ConfigTool extends Tool {
     List<TerracottaServer> stripeServerList = tsa.getTsaConfigurationContext().getTopology().getStripes().get(stripeId - 1);
     for (int j = 0; j < size; ++j) {
       TerracottaServer server = stripeServerList.get(j);
-      Map<ServerSymbolicName, Integer> proxyGroupPortMapping = getProxyGroupPortsForServer(server);
+      Map<ServerSymbolicName, Integer> proxyGroupPortMapping = tsa.getProxyGroupPortsForServer(server);
       int nodeId = j + 1;
       StringBuilder propertyBuilder = new StringBuilder();
       propertyBuilder.append("stripe.").append(stripeId).append(".node.").append(nodeId).append(".tc-properties.test-proxy-group-port=");
@@ -394,6 +393,13 @@ public class ConfigTool extends Tool {
       if (executionResult.getExitStatus() != 0) {
         throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
       }
+    }
+  }
+
+  @Override
+  public void close() {
+    if (!SKIP_UNINSTALL.getBooleanValue()) {
+      uninstall();
     }
   }
 }
