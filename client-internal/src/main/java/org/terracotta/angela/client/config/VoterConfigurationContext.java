@@ -14,7 +14,6 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
-
 package org.terracotta.angela.client.config;
 
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
@@ -33,7 +32,7 @@ public interface VoterConfigurationContext {
 
   License getLicense();
 
-  TerracottaCommandLineEnvironment getTerracottaCommandLineEnvironment();
+  TerracottaCommandLineEnvironment commandLineEnv();
 
   SecurityRootDirectory getSecurityRootDirectory();
 

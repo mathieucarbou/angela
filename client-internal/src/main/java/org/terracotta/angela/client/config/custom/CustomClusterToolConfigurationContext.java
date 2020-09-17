@@ -26,7 +26,7 @@ import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import java.nio.file.Path;
 
 public class CustomClusterToolConfigurationContext implements ToolConfigurationContext {
-  private final TerracottaCommandLineEnvironment terracottaCommandLineEnvironment = TerracottaCommandLineEnvironment.DEFAULT;
+  private TerracottaCommandLineEnvironment commandLineEnv = TerracottaCommandLineEnvironment.DEFAULT;
   private TerracottaClusterTool terracottaClusterTool;
   private SecurityRootDirectory securityRootDirectory;
   private Distribution distribution;
@@ -55,6 +55,11 @@ public class CustomClusterToolConfigurationContext implements ToolConfigurationC
     return this;
   }
 
+  public CustomClusterToolConfigurationContext commandLineEnv(TerracottaCommandLineEnvironment commandLineEnv) {
+    this.commandLineEnv = commandLineEnv;
+    return this;
+  }
+
   @Override
   public Distribution getDistribution() {
     return distribution;
@@ -67,7 +72,7 @@ public class CustomClusterToolConfigurationContext implements ToolConfigurationC
 
   @Override
   public TerracottaCommandLineEnvironment getCommandLineEnv() {
-    return terracottaCommandLineEnvironment;
+    return commandLineEnv;
   }
 
   @Override

@@ -141,7 +141,7 @@ public class Voter implements AutoCloseable {
 
     Distribution distribution = voterConfigurationContext.getDistribution();
     License license = voterConfigurationContext.getLicense();
-    TerracottaCommandLineEnvironment tcEnv = voterConfigurationContext.getTerracottaCommandLineEnvironment();
+    TerracottaCommandLineEnvironment tcEnv = voterConfigurationContext.commandLineEnv();
     SecurityRootDirectory securityRootDirectory = voterConfigurationContext.getSecurityRootDirectory();
 
     logger.info("starting voter on {}", terracottaVoter.getHostName());

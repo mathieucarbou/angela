@@ -29,7 +29,7 @@ import java.util.List;
 
 public class CustomVoterConfigurationContext implements VoterConfigurationContext {
   private final List<TerracottaVoter> terracottaVoters = new ArrayList<>();
-  private TerracottaCommandLineEnvironment tcEnv = TerracottaCommandLineEnvironment.DEFAULT;
+  private TerracottaCommandLineEnvironment commandLineEnv = TerracottaCommandLineEnvironment.DEFAULT;
   private SecurityRootDirectory securityRootDirectory;
   private Distribution distribution;
   private License license;
@@ -57,8 +57,8 @@ public class CustomVoterConfigurationContext implements VoterConfigurationContex
     return this;
   }
 
-  public void terracottaCommandLineEnvironment(TerracottaCommandLineEnvironment tcEnv) {
-    this.tcEnv = tcEnv;
+  public void commandLineEnv(TerracottaCommandLineEnvironment commandLineEnv) {
+    this.commandLineEnv = commandLineEnv;
   }
 
   @Override
@@ -72,8 +72,8 @@ public class CustomVoterConfigurationContext implements VoterConfigurationContex
   }
 
   @Override
-  public TerracottaCommandLineEnvironment getTerracottaCommandLineEnvironment() {
-    return tcEnv;
+  public TerracottaCommandLineEnvironment commandLineEnv() {
+    return commandLineEnv;
   }
 
   @Override
