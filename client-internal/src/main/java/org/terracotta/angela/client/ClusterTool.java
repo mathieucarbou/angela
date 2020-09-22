@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.agent.kit.LocalKitManager;
 import org.terracotta.angela.client.config.ToolConfigurationContext;
+import org.terracotta.angela.client.filesystem.RemoteFolder;
 import org.terracotta.angela.client.util.IgniteClientHelper;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.ToolExecutionResult;
@@ -135,6 +136,12 @@ public class ClusterTool implements AutoCloseable {
   public void uninstall() {
     IgniteRunnable uninstaller = () -> Agent.controller.uninstallClusterTool(instanceId, configContext.getDistribution(), configContext.getHostName(), localKitManager.getKitInstallationName());
     IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, uninstaller);
+  }
+
+  public RemoteFolder browse(String root) {
+    String path = IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort,
+        () -> Agent.controller.getClusterToolInstallPath(instanceId));
+    return new RemoteFolder(ignite, configContext.getHostName(), ignitePort, path, root);
   }
 
   @Override

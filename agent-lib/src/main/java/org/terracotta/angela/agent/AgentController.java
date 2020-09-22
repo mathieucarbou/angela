@@ -32,6 +32,7 @@ import org.terracotta.angela.common.TerracottaManagementServerInstance;
 import org.terracotta.angela.common.TerracottaManagementServerState;
 import org.terracotta.angela.common.TerracottaServerInstance;
 import org.terracotta.angela.common.TerracottaServerState;
+import org.terracotta.angela.common.TerracottaToolInstance;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance;
 import org.terracotta.angela.common.TerracottaVoterState;
@@ -160,6 +161,24 @@ public class AgentController {
       throw new IllegalStateException("Server " + terracottaServer + " has not been installed");
     }
     return terracottaInstall.getInstallLocation(terracottaServer).getPath();
+  }
+
+  public String getConfigToolInstallPath(InstanceId instanceId) {
+    ToolInstall toolInstall = configToolInstalls.get(instanceId);
+    TerracottaToolInstance configToolInstance = toolInstall.getInstance();
+    if (configToolInstance == null) {
+      throw new IllegalStateException("Config tool has not been installed");
+    }
+    return toolInstall.getWorkingDir().getPath();
+  }
+
+  public String getClusterToolInstallPath(InstanceId instanceId) {
+    ToolInstall toolInstall = clusterToolInstalls.get(instanceId);
+    TerracottaToolInstance clusterToolInstance = toolInstall.getInstance();
+    if (clusterToolInstance == null) {
+      throw new IllegalStateException("Cluster tool has not been installed");
+    }
+    return toolInstall.getWorkingDir().getPath();
   }
 
   public String getTsaKitLocation(InstanceId instanceId, TerracottaServer terracottaServer) {
