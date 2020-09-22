@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.agent.kit.LocalKitManager;
 import org.terracotta.angela.client.config.ToolConfigurationContext;
+import org.terracotta.angela.client.filesystem.RemoteFolder;
 import org.terracotta.angela.client.util.IgniteClientHelper;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.ToolException;
@@ -394,6 +395,12 @@ public class ConfigTool implements AutoCloseable {
         throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
       }
     }
+  }
+
+  public RemoteFolder browse(String root) {
+    String path = IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort,
+        () -> Agent.controller.getConfigToolInstallPath(instanceId));
+    return new RemoteFolder(ignite, configContext.getHostName(), ignitePort, path, root);
   }
 
   @Override
