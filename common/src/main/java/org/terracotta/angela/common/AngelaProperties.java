@@ -41,13 +41,6 @@ public enum AngelaProperties {
   // running the test offline (no network connection)
   OFFLINE("angela.offline", "false"),
 
-  // ?
-  SKIP_KIT_INSTALL("angela.skipKitInstall", "false"),
-
-  // ?
-  SKIP_KIT_COPY_LOCALHOST("angela.skipKitCopyLocalhost", "true"),
-
-  // ?
   DISTRIBUTION("angela.distribution", null),
 
   // display Ignite logging (used to help debugging the behaviour of Angela)
@@ -57,7 +50,7 @@ public enum AngelaProperties {
   SKIP_UNINSTALL("angela.skipUninstall", "false"),
 
   // forces a kit copy instead of using a common kit install for multiple tests. useful for parallel execution of tests
-  //   that changes files in the kit install (e.g. tmc.properties)
+  // that changes files in the kit install (e.g. tmc.properties)
   KIT_COPY("angela.kitCopy", "false"),
 
   // ssh properties

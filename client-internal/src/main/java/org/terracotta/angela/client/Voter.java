@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static org.terracotta.angela.common.AngelaProperties.KIT_COPY;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
 import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
@@ -151,9 +152,8 @@ public class Voter implements AutoCloseable {
 
     IgniteCallable<Boolean> callable = () -> Agent.controller.installVoter(instanceId, terracottaVoter, distribution, license,
         localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv);
-    boolean isRemoteInstallationSuccessful = kitInstallationPath == null && IgniteClientHelper.executeRemotely(ignite, terracottaVoter.getHostName(), ignitePort, callable);
-
-    if (!isRemoteInstallationSuccessful) {
+    boolean isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, terracottaVoter.getHostName(), ignitePort, callable);
+    if (!isRemoteInstallationSuccessful && (kitInstallationPath == null || !KIT_COPY.getBooleanValue())) {
       try {
         IgniteClientHelper.uploadKit(ignite, terracottaVoter.getHostName(), ignitePort, instanceId, distribution,
             localKitManager.getKitInstallationName(), localKitManager.getKitInstallationPath().toFile());

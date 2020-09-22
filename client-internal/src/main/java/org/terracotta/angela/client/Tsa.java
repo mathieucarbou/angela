@@ -53,10 +53,10 @@ import java.util.stream.Collectors;
 
 import static java.util.EnumSet.of;
 import static org.terracotta.angela.client.config.TsaConfigurationContext.TerracottaCommandLineEnvironmentKeys.SERVER_START_PREFIX;
+import static org.terracotta.angela.common.AngelaProperties.KIT_COPY;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
 import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
-import static org.terracotta.angela.common.AngelaProperties.SKIP_KIT_INSTALL;
 import static org.terracotta.angela.common.AngelaProperties.SKIP_UNINSTALL;
 import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_ACTIVE;
@@ -150,7 +150,7 @@ public class Tsa implements AutoCloseable {
     localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
 
     boolean isRemoteInstallationSuccessful;
-    if (kitInstallationPath == null || SKIP_KIT_INSTALL.getBooleanValue()) {
+    if (kitInstallationPath == null || !KIT_COPY.getBooleanValue()) {
       logger.info("Attempting to remotely install if distribution already exists on {}", terracottaServer.getHostname());
       isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
           () -> Agent.controller.installTsa(instanceId, terracottaServer,
