@@ -74,7 +74,7 @@ public class ConfigTool implements AutoCloseable {
     return IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
   }
 
-  public void attachStripe(TerracottaServer... newServers) {
+  public ConfigTool attachStripe(TerracottaServer... newServers) {
     if (newServers == null || newServers.length == 0) {
       throw new IllegalArgumentException("Servers list should be non-null and non-empty");
     }
@@ -122,9 +122,10 @@ public class ConfigTool implements AutoCloseable {
     if (result.getExitStatus() != 0) {
       throw new ToolException("attach stripe failed", String.join(". ", result.getOutput()), result.getExitStatus());
     }
+    return this;
   }
 
-  public void detachStripe(int stripeIndex) {
+  public ConfigTool detachStripe(int stripeIndex) {
     Topology topology = tsa.getTsaConfigurationContext().getTopology();
     List<List<TerracottaServer>> stripes = topology.getStripes();
     if (stripeIndex < -1 || stripeIndex >= stripes.size()) {
@@ -154,9 +155,10 @@ public class ConfigTool implements AutoCloseable {
     }
 
     topology.removeStripe(stripeIndex);
+    return this;
   }
 
-  public void attachNode(int stripeIndex, TerracottaServer newServer) {
+  public ConfigTool attachNode(int stripeIndex, TerracottaServer newServer) {
     Topology topology = tsa.getTsaConfigurationContext().getTopology();
     List<List<TerracottaServer>> stripes = topology.getStripes();
     if (stripeIndex < -1 || stripeIndex >= stripes.size()) {
@@ -187,9 +189,10 @@ public class ConfigTool implements AutoCloseable {
     if (result.getExitStatus() != 0) {
       throw new ToolException("attach node failed", String.join(". ", result.getOutput()), result.getExitStatus());
     }
+    return this;
   }
 
-  public void detachNode(int stripeIndex, int serverIndex) {
+  public ConfigTool detachNode(int stripeIndex, int serverIndex) {
     Topology topology = tsa.getTsaConfigurationContext().getTopology();
     List<List<TerracottaServer>> stripes = topology.getStripes();
     if (stripeIndex < -1 || stripeIndex >= stripes.size()) {
@@ -228,9 +231,10 @@ public class ConfigTool implements AutoCloseable {
     }
 
     topology.removeServer(stripeIndex, serverIndex);
+    return this;
   }
 
-  public void attachAll() {
+  public ConfigTool attachAll() {
     Topology topology = tsa.getTsaConfigurationContext().getTopology();
     if (topology.isNetDisruptionEnabled()) {
       for (TerracottaServer terracottaServer : topology.getServers()) {
@@ -288,9 +292,10 @@ public class ConfigTool implements AutoCloseable {
         }
       }
     }
+    return this;
   }
 
-  public void activate() {
+  public ConfigTool activate() {
     TerracottaServer terracottaServer = tsa.getTsaConfigurationContext().getTopology().getServers().get(0);
     logger.info("Activating cluster from {}", terracottaServer.getHostname());
     String clusterName = tsa.getTsaConfigurationContext().getClusterName();
@@ -307,9 +312,10 @@ public class ConfigTool implements AutoCloseable {
     if (result.getExitStatus() != 0) {
       throw new ToolException("activate failed", String.join(". ", result.getOutput()), result.getExitStatus());
     }
+    return this;
   }
 
-  public void install() {
+  public ConfigTool install() {
     Distribution distribution = configContext.getDistribution();
     License license = configContext.getLicense();
     TerracottaCommandLineEnvironment tcEnv = configContext.getCommandLineEnv();
@@ -330,14 +336,17 @@ public class ConfigTool implements AutoCloseable {
         throw new RuntimeException("Cannot upload kit to " + configContext.getHostName(), e);
       }
     }
+    return this;
   }
 
-  public void uninstall() {
-    IgniteRunnable uninstaller = () -> Agent.controller.uninstallConfigTool(instanceId, configContext.getDistribution(), configContext.getHostName(), localKitManager.getKitInstallationName());
+  public ConfigTool uninstall() {
+    IgniteRunnable uninstaller = () -> Agent.controller.uninstallConfigTool(instanceId, configContext.getDistribution(), configContext
+        .getHostName(), localKitManager.getKitInstallationName());
     IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, uninstaller);
+    return this;
   }
 
-  public void setClientToServerDisruptionLinks(TerracottaServer terracottaServer) {
+  public ConfigTool setClientToServerDisruptionLinks(TerracottaServer terracottaServer) {
     // Disabling client redirection from passive to current active.
     List<String> arguments = new ArrayList<>();
     String property = "stripe.1.node.1.tc-properties." + "l2.l1redirect.enabled=false";
@@ -370,16 +379,24 @@ public class ConfigTool implements AutoCloseable {
     if (executionResult.getExitStatus() != 0) {
       throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
     }
+    return this;
   }
 
-  public void setServerToServerDisruptionLinks(int stripeId, int size) {
-    List<TerracottaServer> stripeServerList = tsa.getTsaConfigurationContext().getTopology().getStripes().get(stripeId - 1);
+  public ConfigTool setServerToServerDisruptionLinks(int stripeId, int size) {
+    List<TerracottaServer> stripeServerList = tsa.getTsaConfigurationContext()
+        .getTopology()
+        .getStripes()
+        .get(stripeId - 1);
     for (int j = 0; j < size; ++j) {
       TerracottaServer server = stripeServerList.get(j);
       Map<ServerSymbolicName, Integer> proxyGroupPortMapping = tsa.getProxyGroupPortsForServer(server);
       int nodeId = j + 1;
       StringBuilder propertyBuilder = new StringBuilder();
-      propertyBuilder.append("stripe.").append(stripeId).append(".node.").append(nodeId).append(".tc-properties.test-proxy-group-port=");
+      propertyBuilder.append("stripe.")
+          .append(stripeId)
+          .append(".node.")
+          .append(nodeId)
+          .append(".tc-properties.test-proxy-group-port=");
       propertyBuilder.append("\"");
       for (Map.Entry<ServerSymbolicName, Integer> entry : proxyGroupPortMapping.entrySet()) {
         propertyBuilder.append(entry.getKey().getSymbolicName());
@@ -395,6 +412,7 @@ public class ConfigTool implements AutoCloseable {
         throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
       }
     }
+    return this;
   }
 
   public RemoteFolder browse(String root) {
