@@ -76,7 +76,7 @@ public class ClusterTool implements AutoCloseable {
     return IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
   }
 
-  public void configure() {
+  public ClusterTool configure() {
     Topology topology = tsa.getTsaConfigurationContext().getTopology();
     TerracottaServer terracottaServer = topology.getConfigurationManager().getServers().get(0);
     logger.info("Configuring cluster from {}", terracottaServer.getHostname());
@@ -108,9 +108,10 @@ public class ClusterTool implements AutoCloseable {
       command.add(tcConfig.getPath());
     }
     executeCommand(command.toArray(new String[0]));
+    return this;
   }
 
-  public void install() {
+  public ClusterTool install() {
     Distribution distribution = configContext.getDistribution();
     License license = configContext.getLicense();
     TerracottaCommandLineEnvironment tcEnv = configContext.getCommandLineEnv();
@@ -131,11 +132,14 @@ public class ClusterTool implements AutoCloseable {
         throw new RuntimeException("Cannot upload kit to " + configContext.getHostName(), e);
       }
     }
+    return this;
   }
 
-  public void uninstall() {
-    IgniteRunnable uninstaller = () -> Agent.controller.uninstallClusterTool(instanceId, configContext.getDistribution(), configContext.getHostName(), localKitManager.getKitInstallationName());
+  public ClusterTool uninstall() {
+    IgniteRunnable uninstaller = () -> Agent.controller.uninstallClusterTool(instanceId, configContext.getDistribution(), configContext
+        .getHostName(), localKitManager.getKitInstallationName());
     IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, uninstaller);
+    return this;
   }
 
   public RemoteFolder browse(String root) {

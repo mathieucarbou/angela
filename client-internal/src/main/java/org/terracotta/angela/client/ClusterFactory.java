@@ -21,10 +21,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.client.config.ClientArrayConfigurationContext;
-import org.terracotta.angela.client.config.ToolConfigurationContext;
 import org.terracotta.angela.client.config.ConfigurationContext;
 import org.terracotta.angela.client.config.MonitoringConfigurationContext;
 import org.terracotta.angela.client.config.TmsConfigurationContext;
+import org.terracotta.angela.client.config.ToolConfigurationContext;
 import org.terracotta.angela.client.config.TsaConfigurationContext;
 import org.terracotta.angela.client.config.VoterConfigurationContext;
 import org.terracotta.angela.client.remote.agent.RemoteAgentLauncher;
@@ -136,6 +136,9 @@ public class ClusterFactory implements AutoCloseable {
 
   public Tsa tsa() {
     TsaConfigurationContext tsaConfigurationContext = configurationContext.tsa();
+    if (tsaConfigurationContext == null) {
+      throw new IllegalArgumentException("tsa() configuration missing in the ConfigurationContext");
+    }
     InstanceId instanceId = init(TSA, tsaConfigurationContext.getTopology().getServersHostnames());
 
     Tsa tsa = new Tsa(localAgent.getIgnite(), igniteDiscoveryPort, portAllocator, instanceId, tsaConfigurationContext);
@@ -145,6 +148,9 @@ public class ClusterFactory implements AutoCloseable {
 
   public Tms tms() {
     TmsConfigurationContext tmsConfigurationContext = configurationContext.tms();
+    if (tmsConfigurationContext == null) {
+      throw new IllegalArgumentException("tms() configuration missing in the ConfigurationContext");
+    }
     InstanceId instanceId = init(TMS, Collections.singletonList(tmsConfigurationContext.getHostname()));
 
     Tms tms = new Tms(localAgent.getIgnite(), igniteDiscoveryPort, instanceId, tmsConfigurationContext);
@@ -153,33 +159,42 @@ public class ClusterFactory implements AutoCloseable {
   }
 
   public ClusterTool clusterTool() {
-    ToolConfigurationContext configContext = configurationContext.clusterTool();
-    InstanceId instanceId = init(CLUSTER_TOOL, Collections.singleton(configContext.getHostName()));
+    ToolConfigurationContext clusterToolConfigurationContext = configurationContext.clusterTool();
+    if (clusterToolConfigurationContext == null) {
+      throw new IllegalArgumentException("clusterTool() configuration missing in the ConfigurationContext");
+    }
+    InstanceId instanceId = init(CLUSTER_TOOL, Collections.singleton(clusterToolConfigurationContext.getHostName()));
     Tsa tsa = controllers.stream()
         .filter(controller -> controller instanceof Tsa)
-        .map(autoCloseable -> (Tsa) autoCloseable)
+        .map(autoCloseable -> (Tsa)autoCloseable)
         .findAny()
         .orElseThrow(() -> new IllegalStateException("Tsa should be defined before cluster tool in ConfigurationContext"));
-    ClusterTool clusterTool = new ClusterTool(localAgent.getIgnite(), instanceId, igniteDiscoveryPort, configContext, tsa);
+    ClusterTool clusterTool = new ClusterTool(localAgent.getIgnite(), instanceId, igniteDiscoveryPort, clusterToolConfigurationContext, tsa);
     controllers.add(clusterTool);
     return clusterTool;
   }
 
   public ConfigTool configTool() {
-    ToolConfigurationContext configContext = configurationContext.configTool();
-    InstanceId instanceId = init(CONFIG_TOOL, Collections.singleton(configContext.getHostName()));
+    ToolConfigurationContext configToolConfigurationContext = configurationContext.configTool();
+    if (configToolConfigurationContext == null) {
+      throw new IllegalArgumentException("configTool() configuration missing in the ConfigurationContext");
+    }
+    InstanceId instanceId = init(CONFIG_TOOL, Collections.singleton(configToolConfigurationContext.getHostName()));
     Tsa tsa = controllers.stream()
         .filter(controller -> controller instanceof Tsa)
-        .map(autoCloseable -> (Tsa) autoCloseable)
+        .map(autoCloseable -> (Tsa)autoCloseable)
         .findAny()
         .orElseThrow(() -> new IllegalStateException("Tsa should be defined before config tool in ConfigurationContext"));
-    ConfigTool configTool = new ConfigTool(localAgent.getIgnite(), instanceId, igniteDiscoveryPort, configContext, tsa);
+    ConfigTool configTool = new ConfigTool(localAgent.getIgnite(), instanceId, igniteDiscoveryPort, configToolConfigurationContext, tsa);
     controllers.add(configTool);
     return configTool;
   }
 
   public Voter voter() {
     VoterConfigurationContext voterConfigurationContext = configurationContext.voter();
+    if (voterConfigurationContext == null) {
+      throw new IllegalArgumentException("voter() configuration missing in the ConfigurationContext");
+    }
     InstanceId instanceId = init(VOTER, voterConfigurationContext.getHostNames());
     Voter voter = new Voter(localAgent.getIgnite(), igniteDiscoveryPort, instanceId, voterConfigurationContext);
     controllers.add(voter);
@@ -188,10 +203,14 @@ public class ClusterFactory implements AutoCloseable {
 
   public ClientArray clientArray() {
     ClientArrayConfigurationContext clientArrayConfigurationContext = configurationContext.clientArray();
+    if (clientArrayConfigurationContext == null) {
+      throw new IllegalArgumentException("clientArray() configuration missing in the ConfigurationContext");
+    }
     init(CLIENT_ARRAY, clientArrayConfigurationContext.getClientArrayTopology().getClientHostnames());
 
     ClientArray clientArray = new ClientArray(localAgent.getIgnite(), igniteDiscoveryPort,
-        () -> init(CLIENT_ARRAY, clientArrayConfigurationContext.getClientArrayTopology().getClientHostnames()), clientArrayConfigurationContext);
+        () -> init(CLIENT_ARRAY, clientArrayConfigurationContext.getClientArrayTopology()
+            .getClientHostnames()), clientArrayConfigurationContext);
     controllers.add(clientArray);
     return clientArray;
   }
@@ -199,9 +218,8 @@ public class ClusterFactory implements AutoCloseable {
   public ClusterMonitor monitor() {
     MonitoringConfigurationContext monitoringConfigurationContext = configurationContext.monitoring();
     if (monitoringConfigurationContext == null) {
-      throw new IllegalStateException("MonitoringConfigurationContext has not been registered");
+      throw new IllegalArgumentException("monitoring() configuration missing in the ConfigurationContext");
     }
-
     Map<HardwareMetric, MonitoringCommand> commands = monitoringConfigurationContext.commands();
     Set<String> hostnames = configurationContext.allHostnames();
 
