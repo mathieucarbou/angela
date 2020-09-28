@@ -413,7 +413,7 @@ public class ClientTest {
     }
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testClusterMonitorWhenNoMonitoringSpecified() throws Exception {
     ClientArrayTopology ct = new ClientArrayTopology(distribution(version(Versions.EHCACHE_VERSION), PackageType.KIT, LicenseType.TERRACOTTA_OS),
         newClientArrayConfig().host("localhost"));
