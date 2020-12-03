@@ -42,8 +42,11 @@ import org.zeroturnaround.exec.ProcessResult;
 import org.zeroturnaround.exec.stream.slf4j.Slf4jStream;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -54,6 +57,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static java.io.File.separator;
+import static java.io.File.separatorChar;
 import static java.lang.Integer.parseInt;
 import static java.lang.String.join;
 import static java.util.regex.Pattern.compile;
@@ -107,7 +111,7 @@ public class Distribution107Controller extends DistributionController {
 
     WatchedProcess<TerracottaServerState> watchedProcess = new WatchedProcess<>(
         new ProcessExecutor()
-            .command(createTsaCommand(terracottaServer, kitDir, startUpArgs))
+            .command(createTsaCommand(terracottaServer, kitDir, workingDir, startUpArgs))
             .directory(workingDir)
             .environment(env)
             .redirectErrorStream(true)
@@ -300,22 +304,26 @@ public class Distribution107Controller extends DistributionController {
     return "server" + separator + "plugins" + separator + "lib";
   }
 
-  List<String> createTsaCommand(TerracottaServer terracottaServer, File kitLocation, List<String> startUpArgs) {
+  List<String> createTsaCommand(TerracottaServer terracottaServer, File kitLocation, File workingDir, List<String> startUpArgs) {
     List<String> command = new ArrayList<>();
     command.add(getTsaCreateExecutable(kitLocation));
 
     if (startUpArgs != null && !startUpArgs.isEmpty()) {
       command.addAll(startUpArgs);
     } else {
-      List<String> dynamicArguments = addOptions(terracottaServer);
-      command.addAll(dynamicArguments);
+      try {
+        List<String> dynamicArguments = addOptions(terracottaServer, workingDir);
+        command.addAll(dynamicArguments);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     LOGGER.info("Create TSA command: {}", command);
     return command;
   }
 
-  private List<String> addOptions(TerracottaServer server) {
+  private List<String> addOptions(TerracottaServer server, File workingDir) throws IOException {
     List<String> options = new ArrayList<>();
 
     if (server.getConfigFile() != null) {
@@ -398,7 +406,9 @@ public class Distribution107Controller extends DistributionController {
 
     if (server.getAuditLogDir() != null) {
       options.add("-u");
-      options.add(server.getAuditLogDir());
+      String auditPath = workingDir.getAbsolutePath() + separatorChar + "audit-" + server.getServerSymbolicName().getSymbolicName();
+      Files.createDirectories(Paths.get(auditPath));
+      options.add(auditPath);
     }
 
     if (server.getAuthc() != null) {
@@ -408,7 +418,9 @@ public class Distribution107Controller extends DistributionController {
 
     if (server.getSecurityDir() != null) {
       options.add("-x");
-      options.add(server.getSecurityDir().toString());
+      Path securityRootDirectoryPath = workingDir.toPath().resolve("security-root-directory-" + server.getServerSymbolicName().getSymbolicName());
+      server.getSecurityDir().createSecurityRootDirectory(securityRootDirectoryPath);
+      options.add(securityRootDirectoryPath.toString());
     }
 
     if (server.isSslTls()) {

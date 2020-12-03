@@ -40,7 +40,7 @@ public class Distribution107ControllerTest {
     when(symbolicName.getSymbolicName()).thenReturn("Server1");
     final File kitLocation = new File("/somedir");
     final List<String> args = new ArrayList<>();
-    final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, args);
+    final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, kitLocation, args);
 
     assertThat(tsaCommand.get(0), is(equalTo(new File("/somedir/server/bin/start-tc-server").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(tsaCommand.get(1), is(equalTo("-n")));
@@ -63,7 +63,7 @@ public class Distribution107ControllerTest {
     when(symbolicName.getSymbolicName()).thenReturn("Server1");
     final File kitLocation = new File("/somedir");
     final List<String> args = new ArrayList<>();
-    final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, args);
+    final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, kitLocation, args);
 
     assertThat(tsaCommand.get(0), is(equalTo(new File("/somedir/TerracottaDB/server/bin/start-tc-server").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
     assertThat(tsaCommand.get(1), is(equalTo("-n")));
