@@ -57,7 +57,7 @@ public class TerracottaServer {
   private String backupDir;
   private String clientReconnectWindow;
   private String auditLogDir;
-  private Path securityDir;
+  private SecurityRootDirectory securityDir;
   private String authc;
   private boolean sslTls;
   private boolean whitelist;
@@ -169,7 +169,7 @@ public class TerracottaServer {
   }
 
   public TerracottaServer securityDir(Path securityDir) {
-    this.securityDir = securityDir;
+    this.securityDir = SecurityRootDirectory.securityRootDirectory(securityDir);
     return this;
   }
 
@@ -293,7 +293,7 @@ public class TerracottaServer {
     return auditLogDir;
   }
 
-  public Path getSecurityDir() {
+  public SecurityRootDirectory getSecurityDir() {
     return securityDir;
   }
 
