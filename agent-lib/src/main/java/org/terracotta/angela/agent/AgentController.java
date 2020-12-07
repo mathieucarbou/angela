@@ -354,7 +354,7 @@ public class AgentController {
 
   public String getTmsInstallationPath(InstanceId instanceId) {
     TmsInstall serverInstance = tmsInstalls.get(instanceId);
-    return serverInstance.getKitLocation().getPath();
+    return serverInstance.getWorkingDir().getPath();
   }
 
   public TerracottaManagementServerState getTmsState(InstanceId instanceId) {
