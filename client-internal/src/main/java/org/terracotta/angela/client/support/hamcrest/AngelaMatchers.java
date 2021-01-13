@@ -44,7 +44,7 @@ public class AngelaMatchers {
     return new CustomTypeSafeMatcher<ToolExecutionResult>("successful") {
       @Override
       protected boolean matchesSafely(ToolExecutionResult result) {
-        return result.getExitStatus() == 0 && find(result.getOutput(), "successful");
+        return result.getExitStatus() == 0;
       }
     };
   }
