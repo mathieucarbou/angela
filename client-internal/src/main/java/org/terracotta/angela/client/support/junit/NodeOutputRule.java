@@ -35,6 +35,8 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.Spliterator.ORDERED;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This Junit rule can be used to split the Angela logging sent to System.out in different log buckets per node.
@@ -50,6 +52,8 @@ public class NodeOutputRule implements TestRule {
   private static final String DEFAULT_ENCODING = Charset.defaultCharset().name();
 
   private final Map<String, NodeLog> outputs = new ConcurrentHashMap<>();
+
+  private static final Pattern NODE_FINDER = Pattern.compile("\\[node-(\\d)-(\\d)\\] - ");
 
   public Statement apply(Statement base, Description description) {
     return new Statement() {
@@ -82,17 +86,11 @@ public class NodeOutputRule implements TestRule {
     // Angela log lines are standard:
     // 2020-02-26 08:19:37.894 INFO  o.t.a.e.tsa:98 - [node-1-1] AngelaMatchersxyz
     // 2020-02-26 08:19:38.640 INFO  o.t.a.e.tsa:98 - [node-1-1] xyz
-    final int start = line.indexOf(" - [node-");
-    if (start != -1) {
-      final int middle = line.indexOf('-', start + 9);
-      if (middle != -1) {
-        final int end = line.indexOf(']', middle + 1);
-        if (end != -1) {
-          final int stripeId = Integer.parseInt(line.substring(start + 9, middle));
-          final int nodeId = Integer.parseInt(line.substring(middle + 1, end));
-          getLog(stripeId, nodeId).append(line);
-        }
-      }
+    Matcher m = NODE_FINDER.matcher(line);
+    if (m.find()) {
+      int stripe = Integer.parseInt(m.group(1));
+      int node = Integer.parseInt(m.group(2));
+      getLog(stripe, node).append(line.substring(line.indexOf(m.group()) + m.group().length()));
     }
   }
 

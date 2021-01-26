@@ -35,12 +35,10 @@ import java.util.UUID;
  */
 public class TerracottaInstall {
 
-  private final File rootInstallLocation;
   private final PortAllocator portAllocator;
   private final Map<UUID, TerracottaServerInstance> terracottaServerInstances = new HashMap<>();
 
-  public TerracottaInstall(File rootInstallLocation, PortAllocator portAllocator) {
-    this.rootInstallLocation = rootInstallLocation;
+  public TerracottaInstall(PortAllocator portAllocator) {
     this.portAllocator = portAllocator;
   }
 
@@ -97,15 +95,6 @@ public class TerracottaInstall {
     }
   }
 
-  public File installLocation(Distribution distribution) {
-    synchronized (terracottaServerInstances) {
-      TerracottaServerInstance terracottaServerInstance = terracottaServerInstances.values().stream()
-          .filter(tsi -> tsi.getDistribution().equals(distribution))
-          .findFirst()
-          .orElseThrow(() -> new RuntimeException("Distribution not installed : " + distribution));
-      return terracottaServerInstance.getWorkingDir();
-    }
-  }
 
   public File kitLocation(Distribution distribution) {
     synchronized (terracottaServerInstances) {
@@ -115,9 +104,5 @@ public class TerracottaInstall {
           .orElseThrow(() -> new RuntimeException("Distribution not installed : " + distribution));
       return terracottaServerInstance.getKitDir();
     }
-  }
-
-  public File getRootInstallLocation() {
-    return rootInstallLocation;
   }
 }

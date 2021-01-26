@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaManagementServerState;
-import org.terracotta.angela.common.TerracottaServerInstance.TerracottaServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
@@ -65,6 +64,8 @@ import static java.util.regex.Pattern.compile;
 import static org.terracotta.angela.common.AngelaProperties.TMS_FULL_LOGGING;
 import static org.terracotta.angela.common.AngelaProperties.TSA_FULL_LOGGING;
 import static org.terracotta.angela.common.AngelaProperties.VOTER_FULL_LOGGING;
+import org.terracotta.angela.common.TerracottaServerHandle;
+import org.terracotta.angela.common.util.RetryUtils;
 
 public class Distribution107Controller extends DistributionController {
   private final static Logger LOGGER = LoggerFactory.getLogger(Distribution107Controller.class);
@@ -77,7 +78,7 @@ public class Distribution107Controller extends DistributionController {
   }
 
   @Override
-  public TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
+  public TerracottaServerHandle createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                                    Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
                                                    TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
     Map<String, String> env = tcEnv.buildEnv(envOverrides);
@@ -131,7 +132,48 @@ public class Distribution107Controller extends DistributionController {
     if (!watchedProcess.isAlive()) {
       throw new RuntimeException("Terracotta server process died in its infancy : " + terracottaServer.getServerSymbolicName());
     }
-    return new TerracottaServerInstanceProcess(stateRef, watchedProcess.getPid(), javaPid);
+    return new TerracottaServerHandle() {
+      @Override
+      public TerracottaServerState getState() {
+        return stateRef.get();
+      }
+
+      @Override
+      public int getJavaPid() {
+        return javaPid.get();
+      }
+
+      @Override
+      public boolean isAlive() {
+        return watchedProcess.isAlive();
+      }
+
+      @Override
+      public void stop() {
+        try {
+          ProcessUtil.destroyGracefullyOrForcefullyAndWait(javaPid.get());
+        } catch (Exception e) {
+          throw new RuntimeException("Could not destroy TC server process with PID " + watchedProcess.getPid(), e);
+        }
+        try {
+          ProcessUtil.destroyGracefullyOrForcefullyAndWait(watchedProcess.getPid());
+        } catch (Exception e) {
+          throw new RuntimeException("Could not destroy TC server process with PID " + watchedProcess.getPid(), e);
+        }
+        final int maxWaitTimeMillis = 30000;
+        if (!RetryUtils.waitFor(() -> getState() == TerracottaServerState.STOPPED, maxWaitTimeMillis)) {
+          throw new RuntimeException(
+              String.format(
+                  "Tried for %dms, but server %s did not get the state %s [remained at state %s]",
+                  maxWaitTimeMillis,
+                  terracottaServer.getServerSymbolicName().getSymbolicName(),
+                  TerracottaServerState.STOPPED,
+                  getState()
+              )
+          );
+        }
+      }
+    };
   }
 
   @Override

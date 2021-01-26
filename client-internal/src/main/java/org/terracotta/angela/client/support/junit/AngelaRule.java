@@ -48,7 +48,7 @@ import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_PASS
 public class AngelaRule extends ExtendedTestRule {
 
   private final PortAllocator portAllocator = new DefaultPortAllocator();
-  private final ConfigurationContext configuration;
+  private ConfigurationContext configuration;
   private final boolean autoStart;
   private final boolean autoActivate;
 
@@ -66,6 +66,12 @@ public class AngelaRule extends ExtendedTestRule {
     this.configuration = configuration;
     this.autoStart = autoStart;
     this.autoActivate = autoActivate;
+  }
+
+  public ConfigurationContext configure(ConfigurationContext configuration) {
+    ConfigurationContext old = this.configuration;
+    this.configuration = configuration;
+    return old;
   }
 
   // =========================================
@@ -88,8 +94,7 @@ public class AngelaRule extends ExtendedTestRule {
       }
     }
 
-    int hash = description.getMethodName() == null ? 0 : description.getMethodName().hashCode();
-    this.clusterFactory = new ClusterFactory(description.getTestClass().getSimpleName() + "-" + hash, configuration);
+    this.clusterFactory = new ClusterFactory(description.getTestClass().getSimpleName(), configuration);
 
     tsa = memoize(clusterFactory::tsa);
     cluster = memoize(clusterFactory::cluster);

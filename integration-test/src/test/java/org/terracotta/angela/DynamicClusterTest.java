@@ -33,6 +33,7 @@ import java.util.concurrent.Callable;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
+import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
 import static org.terracotta.angela.common.dynamic_cluster.Stripe.stripe;
@@ -448,8 +449,10 @@ public class DynamicClusterTest {
                     )
                 )
             )
-        ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
-
+        ).configTool(context -> context
+                .configTool(configTool("configTool", "localhost"))
+                .distribution(DISTRIBUTION));
+    
     try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testNodeActivation", configContext)) {
       Tsa tsa = factory.tsa();
       tsa.startAll();

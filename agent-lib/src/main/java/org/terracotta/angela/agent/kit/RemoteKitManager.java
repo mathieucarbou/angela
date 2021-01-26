@@ -44,44 +44,44 @@ import static org.terracotta.utilities.io.Files.ExtendedOption.RECURSIVE;
 public class RemoteKitManager extends KitManager {
   private static final Logger logger = LoggerFactory.getLogger(RemoteKitManager.class);
 
-  private final Path workingDir; // The location containing server logs
+  private final Path kitPath; // The location containing server logs
 
   public RemoteKitManager(InstanceId instanceId, Distribution distribution, String kitInstallationName) {
     super(distribution);
     this.kitInstallationPath = rootInstallationPath.resolve(kitInstallationName);
-    Path workingDir = Agent.WORK_DIR.resolve(instanceId.toString());
-    logger.info("Working directory is: {}", workingDir);
-    this.workingDir = workingDir;
+    Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
+    logger.info("Working directory is: {}", workingPath);
+    this.kitPath = workingPath;
   }
 
   // Returns the location to be used for kit - could be the source kit path itself, or a new location based on if or not
   // the kit was copied
   public File installKit(License license, Collection<String> serversHostnames) {
     try {
-      Files.createDirectories(workingDir);
+      Files.createDirectories(kitPath);
 
       logger.info("should copy a separate kit install ? {}", KIT_COPY.getBooleanValue());
       if (areAllLocal(serversHostnames) && !KIT_COPY.getBooleanValue()) {
-        logger.info("Skipped copying kit from {} to {}", kitInstallationPath.toAbsolutePath(), workingDir);
+        logger.info("Skipped copying kit from {} to {}", kitInstallationPath.toAbsolutePath(), kitPath);
         if (license != null) {
-          license.writeToFile(workingDir.toFile());
+          license.writeToFile(kitPath.toFile());
         }
         return kitInstallationPath.toFile();
       } else {
-        logger.info("Copying {} to {}", kitInstallationPath.toAbsolutePath(), workingDir);
-        FileUtils.copy(kitInstallationPath, workingDir, REPLACE_EXISTING, RECURSIVE);
+        logger.info("Copying {} to {}", kitInstallationPath.toAbsolutePath(), kitPath);
+        FileUtils.copy(kitInstallationPath, kitPath, REPLACE_EXISTING, RECURSIVE);
         if (license != null) {
-          license.writeToFile(workingDir.toFile());
+          license.writeToFile(kitPath.toFile());
         }
-        return workingDir.toFile();
+        return kitPath.toFile();
       }
     } catch (IOException e) {
       throw new RuntimeException("Can not create working install", e);
     }
   }
 
-  public Path getWorkingDir() {
-    return workingDir;
+  public Path getKitDir() {
+    return kitPath;
   }
 
   public boolean isKitAvailable() {

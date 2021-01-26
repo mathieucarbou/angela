@@ -17,6 +17,8 @@
 
 package org.terracotta.angela.common.distribution;
 
+import java.util.Arrays;
+import java.util.EnumSet;
 import org.terracotta.angela.common.topology.LicenseType;
 import org.terracotta.angela.common.topology.PackageType;
 import org.terracotta.angela.common.topology.Version;
@@ -38,11 +40,13 @@ public class Distribution {
   private final Version version;
   private final PackageType packageType;
   private final LicenseType licenseType;
+  private final EnumSet<RuntimeOption> runtimeOptions;
 
-  public Distribution(Version version, PackageType packageType, LicenseType licenseType) {
+  private Distribution(Version version, PackageType packageType, LicenseType licenseType, EnumSet<RuntimeOption> runtimeOptions) {
     this.version = requireNonNull(version);
     this.packageType = requireNonNull(packageType);
     this.licenseType = validateLicenseType(version, licenseType);
+    this.runtimeOptions = runtimeOptions;
   }
 
   private LicenseType validateLicenseType(Version version, LicenseType licenseType) {
@@ -68,7 +72,11 @@ public class Distribution {
   }
 
   public static Distribution distribution(Version version, PackageType packageType, LicenseType licenseType) {
-    return new Distribution(version, packageType, licenseType);
+    return new Distribution(version, packageType, licenseType, EnumSet.noneOf(RuntimeOption.class));
+  }
+  
+  public static Distribution distribution(Version version, PackageType packageType, LicenseType licenseType, RuntimeOption...runtime) {
+    return new Distribution(version, packageType, licenseType, EnumSet.copyOf(Arrays.asList(runtime)));
   }
 
   public Version getVersion() {
@@ -88,7 +96,11 @@ public class Distribution {
         || (version.getMajor() == 5 && version.getMinor() >= 7) //tc-platform 5.7 and above
         || (version.getMajor() == 3 && version.getMinor() >= 9) //ehcache 3.9 and above
     ) {
-      return new Distribution107Controller(this);
+      if (runtimeOptions.contains(RuntimeOption.INLINE_SERVERS)) {
+        return new Distribution107InlineController(this);
+      } else {
+        return new Distribution107Controller(this);
+      }
     }
 
     if (version.getMajor() == 10 || version.getMajor() == 3) {
