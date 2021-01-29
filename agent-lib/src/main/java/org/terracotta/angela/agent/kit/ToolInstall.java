@@ -20,13 +20,14 @@ import org.terracotta.angela.common.TerracottaToolInstance;
 import org.terracotta.angela.common.ToolExecutionResult;
 
 import java.io.File;
-import java.util.function.Function;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 public class ToolInstall {
   private final TerracottaToolInstance toolInstance;
   private final File workingDir;
 
-  public ToolInstall(File workingDir, Function<String[], ToolExecutionResult> operation) {
+  public ToolInstall(File workingDir, BiFunction<Map<String, String>, String[], ToolExecutionResult> operation) {
     this.workingDir = workingDir;
     this.toolInstance = new TerracottaToolInstance(operation);
   }

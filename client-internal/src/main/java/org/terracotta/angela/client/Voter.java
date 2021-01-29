@@ -35,7 +35,9 @@ import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.topology.InstanceId;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.terracotta.angela.common.AngelaProperties.KIT_COPY;
@@ -84,7 +86,11 @@ public class Voter implements AutoCloseable {
   }
 
   public Voter start(TerracottaVoter terracottaVoter) {
-    IgniteClientHelper.executeRemotely(ignite, terracottaVoter.getHostName(), ignitePort, () -> Agent.controller.startVoter(instanceId, terracottaVoter));
+    return start(terracottaVoter, Collections.emptyMap());
+  }
+
+  public Voter start(TerracottaVoter terracottaVoter, Map<String, String> envOverrides) {
+    IgniteClientHelper.executeRemotely(ignite, terracottaVoter.getHostName(), ignitePort, () -> Agent.controller.startVoter(instanceId, terracottaVoter, envOverrides));
     return this;
   }
 
