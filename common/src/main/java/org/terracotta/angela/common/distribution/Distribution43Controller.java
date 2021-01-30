@@ -85,7 +85,7 @@ public class Distribution43Controller extends DistributionController {
   @Override
   public TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                                    Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
-                                                   TerracottaCommandLineEnvironment tcEnv, List<String> startUpArgs) {
+                                                   TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(STOPPED);
     AtomicReference<TerracottaServerState> tempStateRef = new AtomicReference<>(STOPPED);
 
@@ -113,7 +113,7 @@ public class Distribution43Controller extends DistributionController {
         serverLogOutputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), mr.group()));
 
     // add an identifiable ID to the JVM's system properties
-    Map<String, String> env = buildEnv(tcEnv);
+    Map<String, String> env = tcEnv.buildEnv(javaLocationResolver, envOverrides);
     env.compute("JAVA_OPTS", (key, value) -> {
       String prop = " -Dangela.processIdentifier=" + terracottaServer.getId();
       return value == null ? prop : value + prop;
@@ -203,13 +203,13 @@ public class Distribution43Controller extends DistributionController {
 
   @Override
   public ToolExecutionResult invokeClusterTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
-                                               TerracottaCommandLineEnvironment env, String... arguments) {
+                                               TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
     throw new UnsupportedOperationException("Running cluster tool is not supported in this distribution version");
   }
 
   @Override
   public ToolExecutionResult invokeConfigTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
-                                              TerracottaCommandLineEnvironment env, String... arguments) {
+                                              TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
     throw new UnsupportedOperationException("Running config tool is not supported in this distribution version");
   }
 
@@ -275,7 +275,7 @@ public class Distribution43Controller extends DistributionController {
   }
 
   @Override
-  public TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+  public TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides) {
     throw new UnsupportedOperationException("NOT YET IMPLEMENTED");
   }
 
@@ -286,7 +286,7 @@ public class Distribution43Controller extends DistributionController {
 
   @Override
   public TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir,
-                                                   SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv) {
+                                                   SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides) {
     throw new UnsupportedOperationException("Running voter is not supported in this distribution version");
   }
 

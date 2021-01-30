@@ -79,8 +79,8 @@ public class Distribution102Controller extends DistributionController {
   @Override
   public TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                                    Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
-                                                   TerracottaCommandLineEnvironment tcEnv, List<String> startUpArgs) {
-    Map<String, String> env = buildEnv(tcEnv);
+                                                   TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
+    Map<String, String> env = tcEnv.buildEnv(javaLocationResolver, envOverrides);
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(TerracottaServerState.STOPPED);
     AtomicInteger javaPid = new AtomicInteger(-1);
 
@@ -129,11 +129,11 @@ public class Distribution102Controller extends DistributionController {
 
   @Override
   public ToolExecutionResult invokeClusterTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
-                                               TerracottaCommandLineEnvironment env, String... arguments) {
+                                               TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
     try {
       ProcessResult processResult = new ProcessExecutor(createClusterToolCommand(kitDir, workingDir, securityDir, arguments))
           .directory(workingDir)
-          .environment(buildEnv(env))
+          .environment(env.buildEnv(javaLocationResolver, envOverrides))
           .readOutput(true)
           .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
           .redirectErrorStream(true)
@@ -147,13 +147,13 @@ public class Distribution102Controller extends DistributionController {
 
   @Override
   public ToolExecutionResult invokeConfigTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
-                                                    TerracottaCommandLineEnvironment env, String... arguments) {
+                                                    TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
     throw new UnsupportedOperationException("Running config tool is not supported in this distribution version");
   }
 
   @Override
-  public TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
-    Map<String, String> env = buildEnv(tcEnv);
+  public TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides) {
+    Map<String, String> env = tcEnv.buildEnv(javaLocationResolver, envOverrides);
 
     AtomicReference<TerracottaManagementServerState> stateRef = new AtomicReference<>(TerracottaManagementServerState.STOPPED);
     AtomicInteger javaPid = new AtomicInteger(-1);
@@ -206,7 +206,7 @@ public class Distribution102Controller extends DistributionController {
 
   @Override
   public TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir,
-                                                   SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv) {
+                                                   SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides) {
     throw new UnsupportedOperationException("Running voter is not supported in this distribution version");
   }
 

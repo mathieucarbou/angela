@@ -222,6 +222,10 @@ public class Tsa implements AutoCloseable {
   }
 
   public Tsa create(TerracottaServer terracottaServer, String... startUpArgs) {
+    return create(terracottaServer, Collections.emptyMap(), startUpArgs);
+  }
+
+  public Tsa create(TerracottaServer terracottaServer, Map<String, String> envOverrides, String... startUpArgs) {
     TerracottaServerState terracottaServerState = getState(terracottaServer);
     switch (terracottaServerState) {
       case STARTING:
@@ -234,7 +238,7 @@ public class Tsa implements AutoCloseable {
         IgniteRunnable tsaCreator = () -> {
           String whatFor = SERVER_START_PREFIX + terracottaServer.getServerSymbolicName().getSymbolicName();
           TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(whatFor);
-          Agent.controller.createTsa(instanceId, terracottaServer, cliEnv, Arrays.asList(startUpArgs));
+          Agent.controller.createTsa(instanceId, terracottaServer, cliEnv, envOverrides, Arrays.asList(startUpArgs));
         };
         IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, tsaCreator);
         return this;
@@ -253,9 +257,12 @@ public class Tsa implements AutoCloseable {
     return disruptionController;
   }
 
-
   public Tsa start(TerracottaServer terracottaServer, String... startUpArgs) {
-    create(terracottaServer, startUpArgs);
+    return start(terracottaServer, Collections.emptyMap(), startUpArgs);
+  }
+
+  public Tsa start(TerracottaServer terracottaServer, Map<String, String> envOverrides, String... startUpArgs) {
+    create(terracottaServer, envOverrides, startUpArgs);
     IgniteRunnable runnable = () -> Agent.controller.waitForTsaInState(instanceId, terracottaServer,
         of(STARTED_AS_ACTIVE, STARTED_AS_PASSIVE, STARTED_IN_DIAGNOSTIC_MODE, START_SUSPENDED));
     IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, runnable);

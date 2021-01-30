@@ -39,6 +39,7 @@ import org.terracotta.angela.common.topology.Topology;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -70,7 +71,11 @@ public class ConfigTool implements AutoCloseable {
   }
 
   public ToolExecutionResult executeCommand(String... arguments) {
-    IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.configTool(instanceId, arguments);
+    return executeCommand(Collections.emptyMap(), arguments);
+  }
+
+  public ToolExecutionResult executeCommand(Map<String, String> env, String... arguments) {
+    IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.configTool(instanceId, env, arguments);
     return IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
   }
 

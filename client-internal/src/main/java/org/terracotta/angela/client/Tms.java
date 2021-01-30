@@ -35,6 +35,9 @@ import org.terracotta.angela.common.tms.security.config.TmsServerSecurityConfig;
 import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.util.HostPort;
 
+import java.util.Collections;
+import java.util.Map;
+
 import static java.util.Collections.singleton;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
@@ -106,9 +109,13 @@ public class Tms implements AutoCloseable {
   }
 
   public Tms start() {
+    return start(Collections.emptyMap());
+  }
+
+  public Tms start(Map<String, String> envOverrides) {
     String tmsHostname = tmsConfigurationContext.getHostname();
     logger.info("Starting TMS on {}", tmsHostname);
-    IgniteClientHelper.executeRemotely(ignite, tmsHostname, ignitePort, () -> Agent.controller.startTms(instanceId));
+    IgniteClientHelper.executeRemotely(ignite, tmsHostname, ignitePort, () -> Agent.controller.startTms(instanceId, envOverrides));
     return this;
   }
 

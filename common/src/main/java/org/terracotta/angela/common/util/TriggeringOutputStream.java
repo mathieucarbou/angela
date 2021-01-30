@@ -42,7 +42,8 @@ public class TriggeringOutputStream extends LogOutputStream {
             consumer.accept(line);
           } finally {
             Matcher matcher = pattern.matcher(line);
-            if (matcher.matches()) {
+            if (matcher
+                .matches()) {
               action.accept(matcher.toMatchResult());
             }
           }

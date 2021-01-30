@@ -42,7 +42,9 @@ import org.terracotta.angela.common.topology.Topology;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.terracotta.angela.common.AngelaProperties.KIT_COPY;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
@@ -71,8 +73,12 @@ public class ClusterTool implements AutoCloseable {
     install();
   }
 
-  public ToolExecutionResult executeCommand(String... command) {
-    IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.clusterTool(instanceId, command);
+  public ToolExecutionResult executeCommand(String... arguments) {
+    return executeCommand(Collections.emptyMap(), arguments);
+  }
+
+  public ToolExecutionResult executeCommand(Map<String, String> env, String... command) {
+    IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.clusterTool(instanceId, env, command);
     return IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
   }
 

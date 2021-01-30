@@ -23,6 +23,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -42,8 +43,8 @@ public class TerracottaManagementServerInstance {
     this.tcEnv = tcEnv;
   }
 
-  public void start() {
-    this.terracottaManagementServerInstanceProcess = this.distributionController.startTms(kitDir, workingDir, tcEnv);
+  public void start(Map<String, String> envOverrides) {
+    this.terracottaManagementServerInstanceProcess = this.distributionController.startTms(kitDir, workingDir, tcEnv, envOverrides);
   }
 
   public void stop() {

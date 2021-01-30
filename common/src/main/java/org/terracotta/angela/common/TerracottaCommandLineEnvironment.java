@@ -17,14 +17,22 @@
 
 package org.terracotta.angela.common;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.terracotta.angela.common.util.JavaLocationResolver;
+
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
-import java.util.Optional;
 import static org.terracotta.angela.common.AngelaProperties.JAVA_OPTS;
 import static org.terracotta.angela.common.AngelaProperties.JAVA_VENDOR;
 import static org.terracotta.angela.common.AngelaProperties.JAVA_VERSION;
@@ -33,6 +41,8 @@ import static org.terracotta.angela.common.AngelaProperties.JAVA_VERSION;
  * Instances of this class are immutable.
  */
 public class TerracottaCommandLineEnvironment {
+  private final static Logger LOGGER = LoggerFactory.getLogger(TerracottaCommandLineEnvironment.class);
+
   public static final TerracottaCommandLineEnvironment DEFAULT;
 
   static {
@@ -109,6 +119,36 @@ public class TerracottaCommandLineEnvironment {
 
   public Set<String> getJavaOpts() {
     return javaOpts;
+  }
+
+  public Map<String, String> buildEnv(JavaLocationResolver javaLocationResolver) {
+    return buildEnv(javaLocationResolver, Collections.emptyMap());
+  }
+
+  public Map<String, String> buildEnv(JavaLocationResolver javaLocationResolver, Map<String, String> overrides) {
+    LOGGER.info("overrides={}", overrides);
+
+    Map<String, String> env = new HashMap<>();
+    String javaHome = getJavaHome().orElseGet(() -> javaLocationResolver.resolveJavaLocation(this).getHome());
+    env.put("JAVA_HOME", javaHome);
+
+    Set<String> javaOpts = getJavaOpts();
+    if (!javaOpts.isEmpty()) {
+      String joinedJavaOpts = String.join(" ", javaOpts);
+      env.put("JAVA_OPTS", joinedJavaOpts);
+    }
+
+    for (Map.Entry<String, String> entry : overrides.entrySet()) {
+      if (entry.getValue() == null) {
+        env.remove(entry.getKey()); // ability to clear an existing entry
+      } else {
+        env.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    Stream.of("JAVA_HOME", "JAVA_OPTS").forEach(key -> LOGGER.info(" {} = {}", key, env.get(key)));
+
+    return env;
   }
 
   @Override

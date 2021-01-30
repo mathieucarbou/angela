@@ -16,16 +16,17 @@
  */
 package org.terracotta.angela.common;
 
-import java.util.function.Function;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 public class TerracottaToolInstance {
-  private final Function<String[], ToolExecutionResult> operation;
+  private final BiFunction<Map<String, String>, String[], ToolExecutionResult> operation;
 
-  public TerracottaToolInstance(Function<String[], ToolExecutionResult> operation) {
+  public TerracottaToolInstance(BiFunction<Map<String, String>, String[], ToolExecutionResult> operation) {
     this.operation = operation;
   }
 
-  public ToolExecutionResult execute(String... command) {
-    return operation.apply(command);
+  public ToolExecutionResult execute(Map<String, String> env, String... command) {
+    return operation.apply(env, command);
   }
 }

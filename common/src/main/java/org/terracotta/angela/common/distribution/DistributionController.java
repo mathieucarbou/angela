@@ -43,10 +43,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * @author Aurelien Broszniowski
@@ -62,21 +60,6 @@ public abstract class DistributionController {
 
   DistributionController(Distribution distribution) {
     this.distribution = distribution;
-  }
-
-  protected Map<String, String> buildEnv(TerracottaCommandLineEnvironment tcEnv) {
-    Map<String, String> env = new HashMap<>();
-    String javaHome = tcEnv.getJavaHome().orElseGet(()->javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
-    env.put("JAVA_HOME", javaHome);
-    LOGGER.info(" JAVA_HOME = {}", javaHome);
-
-    Set<String> javaOpts = tcEnv.getJavaOpts();
-    if (!javaOpts.isEmpty()) {
-      String joinedJavaOpts = String.join(" ", javaOpts);
-      env.put("JAVA_OPTS", joinedJavaOpts);
-      LOGGER.info(" JAVA_OPTS = {}", joinedJavaOpts);
-    }
-    return env;
   }
 
   public ToolExecutionResult invokeJcmd(TerracottaServerInstance.TerracottaServerInstanceProcess terracottaServerInstanceProcess, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
@@ -107,9 +90,9 @@ public abstract class DistributionController {
     }
   }
 
-  public abstract TerracottaServerInstance.TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts, TerracottaCommandLineEnvironment tcEnv, List<String> startUpArgs);
+  public abstract TerracottaServerInstance.TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs);
 
-  public abstract TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment env);
+  public abstract TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Map<String, String> envOverrides);
 
   public abstract void stopTms(File installLocation, TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess terracottaServerInstanceProcess, TerracottaCommandLineEnvironment tcEnv);
 
@@ -138,15 +121,15 @@ public abstract class DistributionController {
   }
 
   public abstract TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir,
-                                                            SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv);
+                                                            SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides);
 
   public abstract void stopVoter(TerracottaVoterInstanceProcess terracottaVoterInstanceProcess);
 
   public abstract ToolExecutionResult invokeClusterTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
-                                                        TerracottaCommandLineEnvironment env, String... arguments);
+                                                        TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments);
 
   public abstract ToolExecutionResult invokeConfigTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
-                                                       TerracottaCommandLineEnvironment env, String... arguments);
+                                                       TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments);
 
   public abstract URI tsaUri(Collection<TerracottaServer> servers, Map<ServerSymbolicName, Integer> proxyTsaPorts);
 

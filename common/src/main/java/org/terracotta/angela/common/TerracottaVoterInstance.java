@@ -21,9 +21,10 @@ import org.terracotta.angela.common.distribution.DistributionController;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -47,8 +48,8 @@ public class TerracottaVoterInstance {
     this.tcEnv = tcEnv;
   }
 
-  public void start() {
-    terracottaVoterInstanceProcess = distributionController.startVoter(terracottaVoter, kitDir, workingDir, securityRootDirectory, tcEnv);
+  public void start(Map<String, String> envOverrides) {
+    terracottaVoterInstanceProcess = distributionController.startVoter(terracottaVoter, kitDir, workingDir, securityRootDirectory, tcEnv, envOverrides);
   }
 
   public void stop() {

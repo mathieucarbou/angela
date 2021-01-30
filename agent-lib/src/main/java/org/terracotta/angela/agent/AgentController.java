@@ -74,7 +74,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -263,9 +263,9 @@ public class AgentController {
       File kitDir = kitManager.installKit(license, Collections.singletonList(hostName));
       File workingDir = kitManager.getWorkingDir().toFile();
       clusterToolInstalls.computeIfAbsent(instanceId, id -> {
-        Function<String[], ToolExecutionResult> operation = command -> {
+        BiFunction<Map<String, String>, String[], ToolExecutionResult> operation = (env, command) -> {
           DistributionController distributionController = distribution.createDistributionController();
-          return distributionController.invokeClusterTool(kitDir, workingDir, securityRootDirectory, tcEnv, command);
+          return distributionController.invokeClusterTool(kitDir, workingDir, securityRootDirectory, tcEnv, env, command);
         };
         return new ToolInstall(workingDir, operation);
       });
@@ -288,9 +288,9 @@ public class AgentController {
       File kitDir = kitManager.installKit(license, Collections.singletonList(hostName));
       File workingDir = kitManager.getWorkingDir().toFile();
       configToolInstalls.computeIfAbsent(instanceId, id -> {
-        Function<String[], ToolExecutionResult> operation = command -> {
+        BiFunction<Map<String, String>, String[], ToolExecutionResult> operation = (env, command) -> {
           DistributionController distributionController = distribution.createDistributionController();
-          return distributionController.invokeConfigTool(kitDir, workingDir, securityRootDirectory, tcEnv, command);
+          return distributionController.invokeConfigTool(kitDir, workingDir, securityRootDirectory, tcEnv, env, command);
         };
         return new ToolInstall(workingDir, operation);
       });
@@ -340,10 +340,10 @@ public class AgentController {
     }
   }
 
-  public void startTms(InstanceId instanceId) {
+  public void startTms(InstanceId instanceId, Map<String, String> envOverrides) {
     TerracottaManagementServerInstance serverInstance = tmsInstalls.get(instanceId)
         .getTerracottaManagementServerInstance();
-    serverInstance.start();
+    serverInstance.start(envOverrides);
   }
 
   public void stopTms(InstanceId instanceId) {
@@ -452,9 +452,9 @@ public class AgentController {
     }
   }
 
-  public void createTsa(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, List<String> startUpArgs) {
+  public void createTsa(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
     TerracottaServerInstance serverInstance = tsaInstalls.get(instanceId).getTerracottaServerInstance(terracottaServer);
-    serverInstance.create(tcEnv, startUpArgs);
+    serverInstance.create(tcEnv, envOverrides, startUpArgs);
   }
 
   public void stopTsa(InstanceId instanceId, TerracottaServer terracottaServer) {
@@ -525,10 +525,10 @@ public class AgentController {
     return terracottaVoterInstance.getTerracottaVoterState();
   }
 
-  public void startVoter(InstanceId instanceId, TerracottaVoter terracottaVoter) {
+  public void startVoter(InstanceId instanceId, TerracottaVoter terracottaVoter, Map<String, String> envOverrides) {
     TerracottaVoterInstance terracottaVoterInstance = voterInstalls.get(instanceId)
         .getTerracottaVoterInstance(terracottaVoter);
-    terracottaVoterInstance.start();
+    terracottaVoterInstance.start(envOverrides);
   }
 
   public void stopVoter(InstanceId instanceId, TerracottaVoter terracottaVoter) {
@@ -536,20 +536,20 @@ public class AgentController {
     terracottaVoterInstance.stop();
   }
 
-  public ToolExecutionResult clusterTool(InstanceId instanceId, String... command) {
+  public ToolExecutionResult clusterTool(InstanceId instanceId, Map<String, String> env, String... command) {
     ToolInstall clusterToolInstall = clusterToolInstalls.get(instanceId);
     if (clusterToolInstall == null) {
       throw new IllegalStateException("Cluster tool has not been installed");
     }
-    return clusterToolInstall.getInstance().execute(command);
+    return clusterToolInstall.getInstance().execute(env, command);
   }
 
-  public ToolExecutionResult configTool(InstanceId instanceId, String... command) {
+  public ToolExecutionResult configTool(InstanceId instanceId, Map<String, String> env, String... command) {
     ToolInstall configToolInstall = configToolInstalls.get(instanceId);
     if (configToolInstall == null) {
       throw new IllegalStateException("Config tool has not been installed");
     }
-    return configToolInstall.getInstance().execute(command);
+    return configToolInstall.getInstance().execute(env, command);
   }
 
   public ToolExecutionResult serverJcmd(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
