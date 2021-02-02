@@ -157,7 +157,7 @@ public class Voter implements AutoCloseable {
     localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
 
     IgniteCallable<Boolean> callable = () -> Agent.controller.installVoter(instanceId, terracottaVoter, distribution, license,
-        localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv);
+        localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv, kitInstallationPath);
     boolean isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, terracottaVoter.getHostName(), ignitePort, callable);
     if (!isRemoteInstallationSuccessful && (kitInstallationPath == null || !KIT_COPY.getBooleanValue())) {
       try {

@@ -47,10 +47,13 @@ public class License {
 
   public File writeToFile(File dest) {
     File licenseFile = new File(dest, this.filename);
-    try {
-      Files.write(licenseFile.toPath(), licenseContent.getBytes());
-    } catch (IOException ioe) {
-      throw new RuntimeException(ioe);
+    // tests are concurrently using a kit so do not re-write a license file
+    if(!licenseFile.exists()) {
+      try {
+        Files.write(licenseFile.toPath(), licenseContent.getBytes());
+      } catch (IOException ioe) {
+        throw new RuntimeException(ioe);
+      }
     }
     return licenseFile;
   }
