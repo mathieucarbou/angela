@@ -330,7 +330,7 @@ public class ConfigTool implements AutoCloseable {
     localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
 
     IgniteCallable<Boolean> callable = () -> Agent.controller.installConfigTool(instanceId, configContext.getHostName(),
-        distribution, license, localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv);
+        distribution, license, localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv, kitInstallationPath);
     boolean isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
     if (!isRemoteInstallationSuccessful && (kitInstallationPath == null || !KIT_COPY.getBooleanValue())) {
       try {

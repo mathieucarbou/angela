@@ -150,7 +150,9 @@ public class Tsa implements AutoCloseable {
     localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
 
     boolean isRemoteInstallationSuccessful;
-    if (kitInstallationPath == null || !KIT_COPY.getBooleanValue()) {
+    if (kitInstallationPath == null || KIT_COPY.getBooleanValue()) {
+      // "kitInstallationPath" is either not provided (=> kit download)
+      // or it is provided but we specifically ask for a kit copy
       logger.info("Attempting to remotely install if distribution already exists on {}", terracottaServer.getHostname());
       isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
           () -> Agent.controller.installTsa(instanceId, terracottaServer,
@@ -169,6 +171,8 @@ public class Tsa implements AutoCloseable {
         }
       }
     } else {
+      // We are trying to reuse the "kitInstallationPath" if provided (kitInstallationPath != null)
+      // To end up here, KIT_COPY should be false
       IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort,
           () -> Agent.controller.installTsa(instanceId, terracottaServer,
               license, localKitManager.getKitInstallationName(), distribution, topology, kitInstallationPath));

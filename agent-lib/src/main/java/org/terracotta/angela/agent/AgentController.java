@@ -71,6 +71,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -129,15 +130,13 @@ public class AgentController {
         workingDir = kitManager.getWorkingDir().toFile();
         terracottaInstall = tsaInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(workingDir, portAllocator));
       } else {
+        // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
         kitLocation = new File(kitInstallationPath);
-        if (license !=null) {
-          license.writeToFile(kitLocation);
-        }
         Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
         try {
           Files.createDirectories(workingPath);
         } catch (IOException e) {
-          logger.debug("Can not create {}", workingPath,e);
+          logger.debug("Can not create {}", workingPath, e);
         }
         workingDir = workingPath.toFile();
 
@@ -201,47 +200,47 @@ public class AgentController {
 
   public boolean installTms(InstanceId instanceId, String tmsHostname, Distribution distribution, License license,
                             TmsServerSecurityConfig tmsServerSecurityConfig, String kitInstallationName,
-                            TerracottaCommandLineEnvironment tcEnv, Collection<String> hostNames) {
+                            TerracottaCommandLineEnvironment tcEnv, String hostName, String kitInstallationPath) {
     TmsInstall tmsInstall = tmsInstalls.get(instanceId);
     if (tmsInstall != null) {
       logger.debug("Kit for " + tmsHostname + " already installed");
       tmsInstall.addTerracottaManagementServer();
       return true;
+
     } else {
-      logger.debug("Attempting to install kit from cached install for " + tmsHostname);
-      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
 
-      if (kitManager.isKitAvailable()) {
-        File kitDir = kitManager.installKit(license, hostNames);
-        File workingDir = kitManager.getWorkingDir().toFile();
+      Optional<Dirs> dirs = Dirs.discover(instanceId, hostName, distribution, license, kitInstallationName, kitInstallationPath);
+      if (!dirs.isPresent()) {
+        return false;
+      }
 
+      // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
+      if(kitInstallationPath == null) {
+        File kitDir = dirs.get().kitManager.installKit(license, Collections.singleton(hostName));
         File tmcProperties = new File(kitDir, "/tools/management/conf/tmc.properties");
         if (tmsServerSecurityConfig != null) {
           enableTmsSecurity(tmcProperties, tmsServerSecurityConfig);
         }
-        tmsInstalls.put(instanceId, new TmsInstall(distribution, kitDir, workingDir, tcEnv));
-        return true;
-      } else {
-        return false;
       }
+
+      tmsInstalls.put(instanceId, new TmsInstall(distribution, dirs.get().kitDir, dirs.get().workingDir, tcEnv));
+      return true;
     }
   }
 
   public boolean installVoter(InstanceId instanceId, TerracottaVoter terracottaVoter, Distribution distribution,
                               License license, String kitInstallationName, SecurityRootDirectory securityRootDirectory,
-                              TerracottaCommandLineEnvironment tcEnv) {
+                              TerracottaCommandLineEnvironment tcEnv, String kitInstallationPath) {
     VoterInstall voterInstall = voterInstalls.get(instanceId);
 
     if (voterInstall == null) {
-      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
-      if (!kitManager.isKitAvailable()) {
+
+      Optional<Dirs> dirs = Dirs.discover(instanceId, terracottaVoter.getHostName(), distribution, license, kitInstallationName, kitInstallationPath);
+      if (!dirs.isPresent()) {
         return false;
       }
 
-      logger.info("Installing kit for {} from {}", terracottaVoter, distribution);
-      File kitDir = kitManager.installKit(license, Collections.singletonList(terracottaVoter.getHostName()));
-      File workingDir = kitManager.getWorkingDir().toFile();
-      voterInstall = voterInstalls.computeIfAbsent(instanceId, (id) -> new VoterInstall(distribution, kitDir, workingDir, securityRootDirectory, tcEnv));
+      voterInstall = voterInstalls.computeIfAbsent(instanceId, (id) -> new VoterInstall(distribution, dirs.get().kitDir, dirs.get().workingDir, securityRootDirectory, tcEnv));
     }
 
     voterInstall.addVoter(terracottaVoter);
@@ -251,23 +250,21 @@ public class AgentController {
 
   public boolean installClusterTool(InstanceId instanceId, String hostName, Distribution distribution,
                                     License license, String kitInstallationName, SecurityRootDirectory securityRootDirectory,
-                                    TerracottaCommandLineEnvironment tcEnv) {
+                                    TerracottaCommandLineEnvironment tcEnv, String kitInstallationPath) {
     ToolInstall clusterToolInstall = clusterToolInstalls.get(instanceId);
     if (clusterToolInstall == null) {
-      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
-      if (!kitManager.isKitAvailable()) {
+
+      Optional<Dirs> dirs = Dirs.discover(instanceId, hostName, distribution, license, kitInstallationName, kitInstallationPath);
+      if (!dirs.isPresent()) {
         return false;
       }
 
-      logger.info("Installing kit on host {} from {}", hostName, distribution);
-      File kitDir = kitManager.installKit(license, Collections.singletonList(hostName));
-      File workingDir = kitManager.getWorkingDir().toFile();
       clusterToolInstalls.computeIfAbsent(instanceId, id -> {
         BiFunction<Map<String, String>, String[], ToolExecutionResult> operation = (env, command) -> {
           DistributionController distributionController = distribution.createDistributionController();
-          return distributionController.invokeClusterTool(kitDir, workingDir, securityRootDirectory, tcEnv, env, command);
+          return distributionController.invokeClusterTool(dirs.get().kitDir, dirs.get().workingDir, securityRootDirectory, tcEnv, env, command);
         };
-        return new ToolInstall(workingDir, operation);
+        return new ToolInstall(dirs.get().workingDir, operation);
       });
     }
     return true;
@@ -275,24 +272,22 @@ public class AgentController {
 
   public boolean installConfigTool(InstanceId instanceId, String hostName, Distribution distribution,
                                    License license, String kitInstallationName, SecurityRootDirectory securityRootDirectory,
-                                   TerracottaCommandLineEnvironment tcEnv) {
+                                   TerracottaCommandLineEnvironment tcEnv, String kitInstallationPath) {
     ToolInstall configToolInstall = configToolInstalls.get(instanceId);
 
     if (configToolInstall == null) {
-      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
-      if (!kitManager.isKitAvailable()) {
+
+      Optional<Dirs> dirs = Dirs.discover(instanceId, hostName, distribution, license, kitInstallationName, kitInstallationPath);
+      if (!dirs.isPresent()) {
         return false;
       }
 
-      logger.info("Installing kit for host {} from {}", hostName, distribution);
-      File kitDir = kitManager.installKit(license, Collections.singletonList(hostName));
-      File workingDir = kitManager.getWorkingDir().toFile();
       configToolInstalls.computeIfAbsent(instanceId, id -> {
         BiFunction<Map<String, String>, String[], ToolExecutionResult> operation = (env, command) -> {
           DistributionController distributionController = distribution.createDistributionController();
-          return distributionController.invokeConfigTool(kitDir, workingDir, securityRootDirectory, tcEnv, env, command);
+          return distributionController.invokeConfigTool(dirs.get().kitDir, dirs.get().workingDir, securityRootDirectory, tcEnv, env, command);
         };
-        return new ToolInstall(workingDir, operation);
+        return new ToolInstall(dirs.get().workingDir, operation);
       });
     }
     return true;
@@ -390,12 +385,15 @@ public class AgentController {
   }
 
   public void uninstallTms(InstanceId instanceId, Distribution distribution, TmsServerSecurityConfig tmsServerSecurityConfig,
-                           String kitInstallationName, String tmsHostname) {
+                           String kitInstallationName, String tmsHostname, String kitInstallationPath) {
     TmsInstall tmsInstall = tmsInstalls.get(instanceId);
     if (tmsInstall != null) {
-      File tmcProperties = new File(tmsInstall.getKitLocation(), "/tools/management/conf/tmc.properties");
-      if (tmsServerSecurityConfig != null) {
-        disableTmsSecurity(tmcProperties, tmsServerSecurityConfig);
+      // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
+      if(kitInstallationPath == null) {
+        File tmcProperties = new File(tmsInstall.getKitLocation(), "/tools/management/conf/tmc.properties");
+        if (tmsServerSecurityConfig != null) {
+          disableTmsSecurity(tmcProperties, tmsServerSecurityConfig);
+        }
       }
       tmsInstall.removeServer();
       tmsInstalls.remove(instanceId);
@@ -626,7 +624,7 @@ public class AgentController {
           break;
         }
 
-        FileMetadata fileMetadata = (FileMetadata)read;
+        FileMetadata fileMetadata = (FileMetadata) read;
         logger.debug("downloading " + fileMetadata);
         if (!fileMetadata.isDirectory()) {
           long readFileLength = 0L;
@@ -638,7 +636,7 @@ public class AgentController {
                 throw new RuntimeException("Error downloading file : " + fileMetadata);
               }
 
-              byte[] buffer = (byte[])queue.take();
+              byte[] buffer = (byte[]) queue.take();
               fos.write(buffer);
               readFileLength += buffer.length;
             }
@@ -724,5 +722,48 @@ public class AgentController {
 
   public Map<String, ?> getNodeAttributes() {
     return ignite.configuration().getUserAttributes();
+  }
+
+  private static class Dirs {
+    final File kitDir;
+    final File workingDir;
+    final RemoteKitManager kitManager;
+
+    public Dirs(File kitDir, File workingDir, RemoteKitManager kitManager) {
+      this.kitDir = kitDir;
+      this.workingDir = workingDir;
+      this.kitManager = kitManager;
+    }
+
+    static Optional<Dirs> discover(InstanceId instanceId, String hostName, Distribution distribution, License license, String kitInstallationName, String kitInstallationPath) {
+      if (kitInstallationPath == null) {
+        RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
+        if (!kitManager.isKitAvailable()) {
+          return Optional.empty();
+        }
+
+        logger.info("Installing kit on host {} from {}", hostName, distribution);
+        return Optional.of(new Dirs(
+            kitManager.installKit(license, Collections.singletonList(hostName)),
+            kitManager.getWorkingDir().toFile(),
+            kitManager
+        ));
+
+      } else {
+        // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
+        File kitDir = new File(kitInstallationPath);
+        Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
+        try {
+          Files.createDirectories(workingPath);
+        } catch (IOException e) {
+          logger.debug("Can not create {}", workingPath, e);
+        }
+        return Optional.of(new Dirs(
+            kitDir,
+            workingPath.toFile(),
+            null
+        ));
+      }
+    }
   }
 }
