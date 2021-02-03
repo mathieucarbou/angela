@@ -215,9 +215,8 @@ public class AgentController {
       }
 
       // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
-      if(kitInstallationPath == null) {
-        File kitDir = dirs.get().kitManager.installKit(license, Collections.singleton(hostName));
-        File tmcProperties = new File(kitDir, "/tools/management/conf/tmc.properties");
+      if (kitInstallationPath == null) {
+        File tmcProperties = new File(dirs.get().kitDir, "/tools/management/conf/tmc.properties");
         if (tmsServerSecurityConfig != null) {
           enableTmsSecurity(tmcProperties, tmsServerSecurityConfig);
         }
