@@ -263,7 +263,7 @@ public class AgentController {
           DistributionController distributionController = distribution.createDistributionController();
           return distributionController.invokeClusterTool(dirs.get().kitDir, dirs.get().workingDir, securityRootDirectory, tcEnv, env, command);
         };
-        return new ToolInstall(dirs.get().workingDir, operation);
+        return new ToolInstall(dirs.get().kitDir, dirs.get().workingDir, distribution, operation);
       });
     }
     return true;
@@ -286,7 +286,7 @@ public class AgentController {
           DistributionController distributionController = distribution.createDistributionController();
           return distributionController.invokeConfigTool(dirs.get().kitDir, dirs.get().workingDir, securityRootDirectory, tcEnv, env, command);
         };
-        return new ToolInstall(dirs.get().workingDir, operation);
+        return new ToolInstall(dirs.get().kitDir, dirs.get().workingDir, distribution, operation);
       });
     }
     return true;
@@ -388,7 +388,7 @@ public class AgentController {
     TmsInstall tmsInstall = tmsInstalls.get(instanceId);
     if (tmsInstall != null) {
       // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
-      if(kitInstallationPath == null) {
+      if (kitInstallationPath == null) {
         File tmcProperties = new File(tmsInstall.getKitLocation(), "/tools/management/conf/tmc.properties");
         if (tmsServerSecurityConfig != null) {
           disableTmsSecurity(tmcProperties, tmsServerSecurityConfig);
@@ -466,6 +466,24 @@ public class AgentController {
   public void waitForTsaInState(InstanceId instanceId, TerracottaServer terracottaServer, Set<TerracottaServerState> wanted) {
     TerracottaServerInstance serverInstance = tsaInstalls.get(instanceId).getTerracottaServerInstance(terracottaServer);
     serverInstance.waitForState(wanted);
+  }
+
+  public ToolExecutionResult configure(InstanceId instanceId, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, License license, SecurityRootDirectory securityRootDirectory, TerracottaCommandLineEnvironment tcEnv, Map<String, String> env, List<String> command) {
+    ToolInstall clusterToolInstall = clusterToolInstalls.get(instanceId);
+    if (clusterToolInstall == null) {
+      throw new IllegalStateException("Cluster tool has not been installed");
+    }
+    DistributionController distributionController = clusterToolInstall.getDistribution().createDistributionController();
+    return distributionController.configureCluster(clusterToolInstall.getKitDir(), clusterToolInstall.getWorkingDir(), topology, proxyTsaPorts, license, securityRootDirectory, tcEnv, env, command.toArray(new String[0]));
+  }
+
+  public ToolExecutionResult activate(InstanceId instanceId, License license, SecurityRootDirectory securityRootDirectory, TerracottaCommandLineEnvironment tcEnv, Map<String, String> env, List<String> command) {
+    ToolInstall configToolInstall = configToolInstalls.get(instanceId);
+    if (configToolInstall == null) {
+      throw new IllegalStateException("Config tool has not been installed");
+    }
+    DistributionController distributionController = configToolInstall.getDistribution().createDistributionController();
+    return distributionController.activateCluster(configToolInstall.getKitDir(), configToolInstall.getWorkingDir(), license, securityRootDirectory, tcEnv, env, command.toArray(new String[0]));
   }
 
   public TerracottaServerState getTsaState(InstanceId instanceId, TerracottaServer terracottaServer) {
@@ -754,6 +772,9 @@ public class AgentController {
         Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
         try {
           Files.createDirectories(workingPath);
+          if (license != null) {
+            license.writeToFile(workingPath.toFile());
+          }
         } catch (IOException e) {
           logger.debug("Can not create {}", workingPath, e);
         }

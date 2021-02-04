@@ -26,6 +26,7 @@ import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
@@ -68,7 +69,7 @@ public abstract class DistributionController {
       return new ToolExecutionResult(-1, Collections.singletonList("PID of java process could not be figured out"));
     }
 
-    String javaHome = tcEnv.getJavaHome().orElseGet(()->javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
+    String javaHome = tcEnv.getJavaHome().orElseGet(() -> javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
 
     List<String> cmdLine = new ArrayList<>();
     if (OS.INSTANCE.isWindows()) {
@@ -128,8 +129,14 @@ public abstract class DistributionController {
   public abstract ToolExecutionResult invokeClusterTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
                                                         TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments);
 
+  public abstract ToolExecutionResult configureCluster(File kitDir, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, License license, SecurityRootDirectory securityDir,
+                                                       TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments);
+
   public abstract ToolExecutionResult invokeConfigTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
                                                        TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments);
+
+  public abstract ToolExecutionResult activateCluster(File kitDir, File workingDir, License license, SecurityRootDirectory securityDir,
+                                                      TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments);
 
   public abstract URI tsaUri(Collection<TerracottaServer> servers, Map<ServerSymbolicName, Integer> proxyTsaPorts);
 

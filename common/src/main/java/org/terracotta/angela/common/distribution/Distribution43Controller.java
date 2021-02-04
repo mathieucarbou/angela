@@ -29,6 +29,7 @@ import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInsta
 import org.terracotta.angela.common.ToolExecutionResult;
 import org.terracotta.angela.common.provider.ConfigurationManager;
 import org.terracotta.angela.common.provider.TcConfigManager;
+import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TcConfig;
@@ -135,7 +136,7 @@ public class Distribution43Controller extends DistributionController {
   }
 
   private Number findWithJcmdJavaPidOf(String serverUuid, TerracottaCommandLineEnvironment tcEnv) {
-    String javaHome = tcEnv.getJavaHome().orElseGet(()->javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
+    String javaHome = tcEnv.getJavaHome().orElseGet(() -> javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
 
     List<String> cmdLine = new ArrayList<>();
     if (OS.INSTANCE.isWindows()) {
@@ -199,6 +200,18 @@ public class Distribution43Controller extends DistributionController {
     }
     logger.warn("Unable to parse jcmd output: {} to find serverUuid {}", lines, serverUuid);
     return null;
+  }
+
+  @Override
+  public ToolExecutionResult configureCluster(File kitDir, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, License license, SecurityRootDirectory securityDir,
+                                              TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
+    throw new UnsupportedOperationException("Running cluster tool is not supported in this distribution version");
+  }
+
+  @Override
+  public ToolExecutionResult activateCluster(File kitDir, File workingDir, License license, SecurityRootDirectory securityDir,
+                                             TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
+    throw new UnsupportedOperationException("Running config tool is not supported in this distribution version");
   }
 
   @Override
@@ -294,7 +307,7 @@ public class Distribution43Controller extends DistributionController {
   public void stopVoter(TerracottaVoterInstanceProcess terracottaVoterInstanceProcess) {
     throw new UnsupportedOperationException("Running voter is not supported in this distribution version");
   }
-  
+
   @Override
   public URI tsaUri(Collection<TerracottaServer> servers, Map<ServerSymbolicName, Integer> proxyTsaPorts) {
     return URI.create(servers
