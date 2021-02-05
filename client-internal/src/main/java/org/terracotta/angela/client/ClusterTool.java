@@ -16,7 +16,6 @@
  */
 package org.terracotta.angela.client;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.lang.IgniteCallable;
 import org.apache.ignite.lang.IgniteRunnable;
@@ -30,16 +29,10 @@ import org.terracotta.angela.client.util.IgniteClientHelper;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.ToolExecutionResult;
 import org.terracotta.angela.common.distribution.Distribution;
-import org.terracotta.angela.common.provider.ConfigurationManager;
-import org.terracotta.angela.common.provider.TcConfigManager;
 import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
-import org.terracotta.angela.common.tcconfig.TcConfig;
-import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.InstanceId;
-import org.terracotta.angela.common.topology.Topology;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,52 +75,35 @@ public class ClusterTool implements AutoCloseable {
     return IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
   }
 
-  public ClusterTool configure() {
-    Topology topology = tsa.getTsaConfigurationContext().getTopology();
-    TerracottaServer terracottaServer = topology.getConfigurationManager().getServers().get(0);
-    logger.info("Configuring cluster from {}", terracottaServer.getHostname());
+  public ClusterTool configure(Map<String, String> env) {
+    TerracottaCommandLineEnvironment tcEnv = configContext.getCommandLineEnv();
+    SecurityRootDirectory securityRootDirectory = configContext.getSecurityRootDirectory();
+    License license = tsa.getTsaConfigurationContext().getLicense();
     String clusterName = tsa.getTsaConfigurationContext().getClusterName();
     if (clusterName == null) {
       clusterName = instanceId.toString();
     }
-    String licensePath = tsa.licensePath(terracottaServer);
-    File tmpConfigDir = new File(FileUtils.getTempDirectory(), "tmp-tc-configs");
-
-    if (!tmpConfigDir.mkdir() && !tmpConfigDir.isDirectory()) {
-      throw new RuntimeException("Error creating temporary cluster tool TC config folder : " + tmpConfigDir);
-    }
-    ConfigurationManager configurationProvider = topology.getConfigurationManager();
-    TcConfigManager tcConfigProvider = (TcConfigManager) configurationProvider;
-    List<TcConfig> tcConfigs = tcConfigProvider.getTcConfigs();
-    List<TcConfig> modifiedConfigs = new ArrayList<>();
-    for (TcConfig tcConfig : tcConfigs) {
-      TcConfig modifiedConfig = TcConfig.copy(tcConfig);
-      if (topology.isNetDisruptionEnabled()) {
-        modifiedConfig.updateServerTsaPort(tsa.updateToProxiedPorts());
-      }
-      modifiedConfig.writeTcConfigFile(tmpConfigDir);
-      modifiedConfigs.add(modifiedConfig);
-    }
-
-    List<String> command = new ArrayList<>(Arrays.asList("configure", "-n", clusterName, "-l", licensePath));
-    for (TcConfig tcConfig : modifiedConfigs) {
-      command.add(tcConfig.getPath());
-    }
-    executeCommand(command.toArray(new String[0]));
+    List<String> command = new ArrayList<>(Arrays.asList("configure", "-n", clusterName));
+    IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.configure(instanceId, tsa.getTsaConfigurationContext().getTopology(), tsa.updateToProxiedPorts(), license, securityRootDirectory, tcEnv, env, command);
+    IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
     return this;
+  }
+
+  public ClusterTool configure() {
+    return configure(Collections.emptyMap());
   }
 
   public ClusterTool install() {
     Distribution distribution = configContext.getDistribution();
-    License license = configContext.getLicense();
+    License license = tsa.getTsaConfigurationContext().getLicense();
     TerracottaCommandLineEnvironment tcEnv = configContext.getCommandLineEnv();
     SecurityRootDirectory securityRootDirectory = configContext.getSecurityRootDirectory();
 
     String kitInstallationPath = getEitherOf(KIT_INSTALLATION_DIR, KIT_INSTALLATION_PATH);
     localKitManager.setupLocalInstall(license, kitInstallationPath, OFFLINE.getBooleanValue());
 
-    IgniteCallable<Boolean> callable = () -> Agent.controller.installClusterTool(instanceId, configContext.getHostName(),
-        distribution, license, localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv, kitInstallationPath);
+    IgniteCallable<Boolean> callable = () -> Agent.controller.installClusterTool(instanceId,
+        configContext.getHostName(), distribution, license, localKitManager.getKitInstallationName(), securityRootDirectory, tcEnv, kitInstallationPath);
     boolean isRemoteInstallationSuccessful = IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
     if (!isRemoteInstallationSuccessful && (kitInstallationPath == null || !KIT_COPY.getBooleanValue())) {
       try {

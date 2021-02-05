@@ -16,6 +16,7 @@
  */
 package org.terracotta.angela.common.distribution;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.common.AngelaProperties;
@@ -27,7 +28,9 @@ import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.provider.ConfigurationManager;
 import org.terracotta.angela.common.provider.TcConfigManager;
+import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.tcconfig.SecureTcConfig;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
@@ -128,26 +131,28 @@ public class Distribution102Controller extends DistributionController {
   }
 
   @Override
+  public ToolExecutionResult configureCluster(File kitDir, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, License license, SecurityRootDirectory securityDir,
+                                              TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
+    List<String> command = createClusterConfigureCommand(kitDir, workingDir, topology, proxyTsaPorts, license, securityDir, arguments);
+    return executeCommand(command, env, workingDir, envOverrides);
+  }
+
+  @Override
   public ToolExecutionResult invokeClusterTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
                                                TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
-    try {
-      ProcessResult processResult = new ProcessExecutor(createClusterToolCommand(kitDir, workingDir, securityDir, arguments))
-          .directory(workingDir)
-          .environment(env.buildEnv(javaLocationResolver, envOverrides))
-          .readOutput(true)
-          .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
-          .redirectErrorStream(true)
-          .exitValue(0)
-          .execute();
-      return new ToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    List<String> command = createClusterToolCommand(kitDir, workingDir, securityDir, arguments);
+    return executeCommand(command, env, workingDir, envOverrides);
   }
 
   @Override
   public ToolExecutionResult invokeConfigTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
-                                                    TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
+                                              TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
+    throw new UnsupportedOperationException("Running config tool is not supported in this distribution version");
+  }
+
+  @Override
+  public ToolExecutionResult activateCluster(File kitDir, File workingDir, License license, SecurityRootDirectory securityDir,
+                                             TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
     throw new UnsupportedOperationException("Running config tool is not supported in this distribution version");
   }
 
@@ -253,9 +258,62 @@ public class Distribution102Controller extends DistributionController {
       command.add(securityDirPath.toString());
     }
     command.addAll(Arrays.asList(arguments));
-
-    logger.info("Cluster tool command: {}", command);
     return command;
+  }
+
+  private List<String> createClusterConfigureCommand(File installLocation, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPort, License license, SecurityRootDirectory securityDir, String[] arguments) {
+    List<String> command = createClusterToolCommand(installLocation, workingDir, securityDir, arguments);
+    if (license != null) {
+      Path licensePath = workingDir.toPath().resolve(license.getFilename());
+      command.add("-l");
+      command.add(licensePath.toString());
+    }
+    command.addAll(addConfigureRelatedCommands(topology, proxyTsaPort));
+    return command;
+  }
+
+  private List<String> addConfigureRelatedCommands(Topology topology, Map<ServerSymbolicName, Integer> proxiedTsaPorts) {
+    List<String> commands = new ArrayList<>();
+    File tmpConfigDir = new File(FileUtils.getTempDirectory(), "tmp-tc-configs");
+
+    if (!tmpConfigDir.mkdir() && !tmpConfigDir.isDirectory()) {
+      throw new RuntimeException("Error creating temporary cluster tool TC config folder : " + tmpConfigDir);
+    }
+    ConfigurationManager configurationProvider = topology.getConfigurationManager();
+    TcConfigManager tcConfigProvider = (TcConfigManager) configurationProvider;
+    List<TcConfig> tcConfigs = tcConfigProvider.getTcConfigs();
+    List<TcConfig> modifiedConfigs = new ArrayList<>();
+    for (TcConfig tcConfig : tcConfigs) {
+      TcConfig modifiedConfig = TcConfig.copy(tcConfig);
+      if (topology.isNetDisruptionEnabled()) {
+        modifiedConfig.updateServerTsaPort(proxiedTsaPorts);
+      }
+      modifiedConfig.writeTcConfigFile(tmpConfigDir);
+      modifiedConfigs.add(modifiedConfig);
+    }
+
+    for (TcConfig tcConfig : modifiedConfigs) {
+      commands.add(tcConfig.getPath());
+    }
+    return commands;
+  }
+
+  private ToolExecutionResult executeCommand(List<String> command, TerracottaCommandLineEnvironment env,
+                                             File workingDir, Map<String, String> envOverrides) {
+    try {
+      logger.info("Cluster tool command: {}", command);
+      ProcessResult processResult = new ProcessExecutor(command)
+          .directory(workingDir)
+          .environment(env.buildEnv(javaLocationResolver, envOverrides))
+          .readOutput(true)
+          .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
+          .redirectErrorStream(true)
+          .exitValue(0)
+          .execute();
+      return new ToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private String getClusterToolExecutable(File installLocation) {

@@ -64,7 +64,7 @@ public class RemoteKitManager extends KitManager {
       if (areAllLocal(serversHostnames) && !KIT_COPY.getBooleanValue()) {
         logger.info("Skipped copying kit from {} to {}", kitInstallationPath.toAbsolutePath(), workingDir);
         if (license != null) {
-          license.writeToFile(kitInstallationPath.toFile());
+          license.writeToFile(workingDir.toFile());
         }
         return kitInstallationPath.toFile();
       } else {

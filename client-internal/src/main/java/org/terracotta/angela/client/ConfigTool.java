@@ -300,7 +300,10 @@ public class ConfigTool implements AutoCloseable {
     return this;
   }
 
-  public ConfigTool activate() {
+  public ConfigTool activate(Map<String, String> env) {
+    TerracottaCommandLineEnvironment tcEnv = configContext.getCommandLineEnv();
+    SecurityRootDirectory securityRootDirectory = configContext.getSecurityRootDirectory();
+    License license = tsa.getTsaConfigurationContext().getLicense();
     TerracottaServer terracottaServer = tsa.getTsaConfigurationContext().getTopology().getServers().get(0);
     logger.info("Activating cluster from {}", terracottaServer.getHostname());
     String clusterName = tsa.getTsaConfigurationContext().getClusterName();
@@ -308,21 +311,18 @@ public class ConfigTool implements AutoCloseable {
       clusterName = instanceId.toString();
     }
     List<String> args = new ArrayList<>(Arrays.asList("activate", "-n", clusterName, "-s", terracottaServer.getHostPort()));
-    String licensePath = tsa.licensePath(terracottaServer);
-    if (licensePath != null) {
-      args.add("-l");
-      args.add(licensePath);
-    }
-    ToolExecutionResult result = executeCommand(args.toArray(new String[0]));
-    if (result.getExitStatus() != 0) {
-      throw new ToolException("activate failed", String.join(". ", result.getOutput()), result.getExitStatus());
-    }
+    IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.activate(instanceId, license, securityRootDirectory, tcEnv, env, args);
+    IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
     return this;
+  }
+
+  public ConfigTool activate() {
+    return activate(Collections.emptyMap());
   }
 
   public ConfigTool install() {
     Distribution distribution = configContext.getDistribution();
-    License license = configContext.getLicense();
+    License license = tsa.getTsaConfigurationContext().getLicense();
     TerracottaCommandLineEnvironment tcEnv = configContext.getCommandLineEnv();
     SecurityRootDirectory securityRootDirectory = configContext.getSecurityRootDirectory();
 

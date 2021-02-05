@@ -18,6 +18,7 @@ package org.terracotta.angela.agent.kit;
 
 import org.terracotta.angela.common.TerracottaToolInstance;
 import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.distribution.Distribution;
 
 import java.io.File;
 import java.util.Map;
@@ -25,10 +26,14 @@ import java.util.function.BiFunction;
 
 public class ToolInstall {
   private final TerracottaToolInstance toolInstance;
+  private final File kitDir;
   private final File workingDir;
+  private final Distribution distribution;
 
-  public ToolInstall(File workingDir, BiFunction<Map<String, String>, String[], ToolExecutionResult> operation) {
+  public ToolInstall(File kitDir, File workingDir, Distribution distribution, BiFunction<Map<String, String>, String[], ToolExecutionResult> operation) {
+    this.kitDir = kitDir;
     this.workingDir = workingDir;
+    this.distribution = distribution;
     this.toolInstance = new TerracottaToolInstance(operation);
   }
 
@@ -38,5 +43,13 @@ public class ToolInstall {
 
   public File getWorkingDir() {
     return workingDir;
+  }
+
+  public File getKitDir() {
+    return kitDir;
+  }
+  
+  public Distribution getDistribution() {
+    return distribution;
   }
 }

@@ -71,7 +71,7 @@ public class TerracottaServerInstance implements Closeable {
     this.workingDir = workingDir;
     this.distribution = distribution;
     this.portAllocator = portAllocator;
-    this.licenseFileLocation = license == null ? null : new File(kitDir, license.getFilename());
+    this.licenseFileLocation = license == null ? null : new File(workingDir, license.getFilename());
     this.netDisruptionEnabled = topology.isNetDisruptionEnabled();
     this.topology = topology;
     constructLinks();
