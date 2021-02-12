@@ -114,7 +114,7 @@ public class Distribution43Controller extends DistributionController {
         serverLogOutputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), mr.group()));
 
     // add an identifiable ID to the JVM's system properties
-    Map<String, String> env = tcEnv.buildEnv(javaLocationResolver, envOverrides);
+    Map<String, String> env = tcEnv.buildEnv(envOverrides);
     env.compute("JAVA_OPTS", (key, value) -> {
       String prop = " -Dangela.processIdentifier=" + terracottaServer.getId();
       return value == null ? prop : value + prop;
@@ -136,7 +136,7 @@ public class Distribution43Controller extends DistributionController {
   }
 
   private Number findWithJcmdJavaPidOf(String serverUuid, TerracottaCommandLineEnvironment tcEnv) {
-    String javaHome = tcEnv.getJavaHome().orElseGet(() -> javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
+    String javaHome = tcEnv.getJavaHome();
 
     List<String> cmdLine = new ArrayList<>();
     if (OS.INSTANCE.isWindows()) {

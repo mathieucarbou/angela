@@ -17,9 +17,6 @@
 
 package org.terracotta.angela.common.util;
 
-import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -48,8 +45,6 @@ import java.util.stream.Collectors;
 
 public class JavaLocationResolver {
 
-  private final static Logger LOGGER = LoggerFactory.getLogger(JavaLocationResolver.class);
-
   private final List<JDK> jdks;
 
   public JavaLocationResolver() {
@@ -65,33 +60,11 @@ public class JavaLocationResolver {
     }
   }
 
-  public JDK resolveJavaLocation(TerracottaCommandLineEnvironment tcEnv) {
-    List<JDK> jdks = resolveJavaLocations(tcEnv.getJavaVersion(), tcEnv.getJavaVendors(), true);
-    if (jdks.size() > 1) {
-      LOGGER.info("Multiple matching java versions found: {} - using the 1st one", jdks);
-    }
-    return jdks.get(0);
-  }
-
-  public List<JDK> resolveJavaLocations(TerracottaCommandLineEnvironment tcEnv, boolean checkValidity) {
-    return resolveJavaLocations(tcEnv.getJavaVersion(), tcEnv.getJavaVendors(), checkValidity);
-  }
-
-  List<JDK> resolveJavaLocations(String version, Set<String> vendors, boolean checkValidity) {
+  public List<JDK> resolveJavaLocations(String version, Set<String> vendors, boolean checkValidity) {
     List<JDK> list = jdks.stream()
         .filter(jdk -> !checkValidity || jdk.isValid())
         .filter(jdk -> version.isEmpty() || version.equals(jdk.getVersion()))
-        .filter(jdk -> {
-          if (vendors.isEmpty()) {
-            return true;
-          }
-          for (String vendor : vendors) {
-            if (vendor.equalsIgnoreCase(jdk.getVendor())) {
-              return true;
-            }
-          }
-          return false;
-        })
+        .filter(jdk -> vendors.isEmpty() || vendors.stream().anyMatch(v -> v.equalsIgnoreCase(jdk.getVendor())))
         .collect(Collectors.toList());
     if (list.isEmpty()) {
       String message = "Missing JDK with version [" + version + "]";

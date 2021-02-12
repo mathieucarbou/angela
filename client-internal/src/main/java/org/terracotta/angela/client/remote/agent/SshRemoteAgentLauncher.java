@@ -252,7 +252,7 @@ public class SshRemoteAgentLauncher implements RemoteAgentLauncher {
     }
     byte[] bytes = ((ByteArrayOutputStream) localFile.getOutputStream()).toByteArray();
     JavaLocationResolver javaLocationResolver = new JavaLocationResolver(new ByteArrayInputStream(bytes));
-    List<JDK> jdks = javaLocationResolver.resolveJavaLocations(tcEnv, false);
+    List<JDK> jdks = javaLocationResolver.resolveJavaLocations(tcEnv.getJavaVersion(), tcEnv.getJavaVendors(), false);
     // check JDK validity remotely
     for (JDK jdk : jdks) {
       String remoteHome = jdk.getHome();
