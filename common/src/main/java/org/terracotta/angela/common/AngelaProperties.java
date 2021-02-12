@@ -64,6 +64,16 @@ public enum AngelaProperties {
   VOTER_FULL_LOGGING("angela.voter.fullLogging", "false"),
 
   // jdk properties to be used by Angela for running processes
+  /**
+   * {@code angela.java.resolver} determines how Angela computes the JAVA_HOME env variable that it will set for all its sub-processes.
+   * The default value is {@code toolchain}.
+   * <ul>
+   *   <li>{@code toolchain}: Angela will compute the JAVA_HOME by discovering paths in the Maven toolchain file, entries being filtered by {@code angela.java.vendor} and {@code angela.java.version}.</li>
+   *   <li>{@code user}: Angela will compute the JAVA_HOME by picking the value of {@code angela.java.home} which can be set by the user. If the user does not specify {@code angela.java.home}, then the {@code java.home} system property is used, which should be the JVM running the current code. {@code angela.java.vendor} and {@code angela.java.version} will not be used in this mode.</li>
+   * </ul>
+   */
+  JAVA_RESOLVER("angela.java.resolver", "toolchain"),
+  JAVA_HOME("angela.java.home", System.getProperty("java.home")),
   JAVA_VENDOR("angela.java.vendor", "zulu"),
   JAVA_VERSION("angela.java.version", "1.8"),
   JAVA_OPTS("angela.java.opts", "-Djdk.security.allowNonCaAnchor=false"),

@@ -83,7 +83,7 @@ public class Distribution102Controller extends DistributionController {
   public TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                                    Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
                                                    TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
-    Map<String, String> env = tcEnv.buildEnv(javaLocationResolver, envOverrides);
+    Map<String, String> env = tcEnv.buildEnv(envOverrides);
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(TerracottaServerState.STOPPED);
     AtomicInteger javaPid = new AtomicInteger(-1);
 
@@ -158,7 +158,7 @@ public class Distribution102Controller extends DistributionController {
 
   @Override
   public TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides) {
-    Map<String, String> env = tcEnv.buildEnv(javaLocationResolver, envOverrides);
+    Map<String, String> env = tcEnv.buildEnv(envOverrides);
 
     AtomicReference<TerracottaManagementServerState> stateRef = new AtomicReference<>(TerracottaManagementServerState.STOPPED);
     AtomicInteger javaPid = new AtomicInteger(-1);
@@ -304,7 +304,7 @@ public class Distribution102Controller extends DistributionController {
       logger.info("Cluster tool command: {}", command);
       ProcessResult processResult = new ProcessExecutor(command)
           .directory(workingDir)
-          .environment(env.buildEnv(javaLocationResolver, envOverrides))
+          .environment(env.buildEnv(envOverrides))
           .readOutput(true)
           .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
           .redirectErrorStream(true)

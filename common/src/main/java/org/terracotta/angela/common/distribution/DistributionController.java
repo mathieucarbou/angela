@@ -31,7 +31,6 @@ import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
-import org.terracotta.angela.common.util.JavaLocationResolver;
 import org.terracotta.angela.common.util.OS;
 import org.terracotta.angela.common.util.ProcessUtil;
 import org.terracotta.angela.common.util.RetryUtils;
@@ -56,9 +55,6 @@ public abstract class DistributionController {
 
   protected final Distribution distribution;
 
-  protected final JavaLocationResolver javaLocationResolver = new JavaLocationResolver();
-
-
   DistributionController(Distribution distribution) {
     this.distribution = distribution;
   }
@@ -69,7 +65,7 @@ public abstract class DistributionController {
       return new ToolExecutionResult(-1, Collections.singletonList("PID of java process could not be figured out"));
     }
 
-    String javaHome = tcEnv.getJavaHome().orElseGet(() -> javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
+    String javaHome = tcEnv.getJavaHome();
 
     List<String> cmdLine = new ArrayList<>();
     if (OS.INSTANCE.isWindows()) {

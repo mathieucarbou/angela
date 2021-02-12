@@ -25,7 +25,6 @@ import org.terracotta.angela.common.ToolExecutionResult;
 import org.terracotta.angela.common.net.PortAllocator;
 import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.util.ExternalLoggers;
-import org.terracotta.angela.common.util.JavaLocationResolver;
 import org.terracotta.angela.common.util.LogOutputStream;
 import org.terracotta.angela.common.util.OS;
 import org.zeroturnaround.exec.ProcessExecutor;
@@ -51,7 +50,6 @@ import static org.terracotta.angela.common.AngelaProperties.ROOT_DIR;
 public class RemoteClientManager {
 
   private final static Logger logger = LoggerFactory.getLogger(RemoteClientManager.class);
-  private final JavaLocationResolver javaLocationResolver = new JavaLocationResolver();
 
   private static final String CLASSPATH_SUBDIR_NAME = "lib";
   private final File kitInstallationPath;
@@ -69,7 +67,7 @@ public class RemoteClientManager {
   }
 
   public ToolExecutionResult jcmd(int javaPid, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
-    String javaHome = tcEnv.getJavaHome().orElseGet(()->javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
+    String javaHome = tcEnv.getJavaHome();
 
     List<String> cmdLine = new ArrayList<>();
     if (OS.INSTANCE.isWindows()) {
@@ -93,7 +91,7 @@ public class RemoteClientManager {
 
   public int spawnClient(InstanceId instanceId, TerracottaCommandLineEnvironment tcEnv, Collection<String> joinedNodes, int ignitePort, PortAllocator portAllocator) {
     try {
-      String javaHome = tcEnv.getJavaHome().orElseGet(()->javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
+      String javaHome = tcEnv.getJavaHome();
 
       final AtomicBoolean started = new AtomicBoolean(false);
       List<String> cmdLine = new ArrayList<>();
