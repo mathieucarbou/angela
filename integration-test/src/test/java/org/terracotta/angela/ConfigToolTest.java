@@ -26,8 +26,11 @@ import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
 
-import static org.junit.Assert.fail;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.junit.Assert.assertThat;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
+import static org.terracotta.angela.client.support.hamcrest.AngelaMatchers.successful;
 import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
 import static org.terracotta.angela.common.dynamic_cluster.Stripe.stripe;
@@ -57,12 +60,8 @@ public class ConfigToolTest {
       tsa.startAll();
       ConfigTool configTool = factory.configTool();
 
-      try {
-        configTool.executeCommand("non-existent-command");
-        fail("Expected config tool invocation to fail as the command doesn't exist");
-      } catch (Exception e) {
-        // expected
-      }
+      ToolExecutionResult result = configTool.executeCommand("non-existent-command");
+      assertThat(result, is(not(successful())));
     }
   }
 
