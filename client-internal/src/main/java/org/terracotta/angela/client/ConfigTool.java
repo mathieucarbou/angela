@@ -312,7 +312,10 @@ public class ConfigTool implements AutoCloseable {
     }
     List<String> args = new ArrayList<>(Arrays.asList("activate", "-n", clusterName, "-s", terracottaServer.getHostPort()));
     IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.activate(instanceId, license, securityRootDirectory, tcEnv, env, args);
-    IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
+    ToolExecutionResult result = IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
+    if(result.getExitStatus() != 0) {
+      throw new IllegalStateException("Failed to execute config-tool activate:\n" + result.toString());
+    }
     return this;
   }
 

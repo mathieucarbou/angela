@@ -85,7 +85,10 @@ public class ClusterTool implements AutoCloseable {
     }
     List<String> command = new ArrayList<>(Arrays.asList("configure", "-n", clusterName));
     IgniteCallable<ToolExecutionResult> callable = () -> Agent.controller.configure(instanceId, tsa.getTsaConfigurationContext().getTopology(), tsa.updateToProxiedPorts(), license, securityRootDirectory, tcEnv, env, command);
-    IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
+    ToolExecutionResult result = IgniteClientHelper.executeRemotely(ignite, configContext.getHostName(), ignitePort, callable);
+    if(result.getExitStatus() != 0) {
+      throw new IllegalStateException("Failed to execute cluster-tool configure:\n" + result.toString());
+    }
     return this;
   }
 
