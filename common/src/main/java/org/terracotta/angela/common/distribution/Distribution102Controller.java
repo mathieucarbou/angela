@@ -308,7 +308,6 @@ public class Distribution102Controller extends DistributionController {
           .readOutput(true)
           .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
           .redirectErrorStream(true)
-          .exitValue(0)
           .execute();
       return new ToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
     } catch (Exception e) {
