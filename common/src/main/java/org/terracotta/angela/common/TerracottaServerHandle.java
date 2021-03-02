@@ -14,28 +14,17 @@
  * The Initial Developer of the Covered Software is
  * Terracotta, Inc., a Software AG company
  */
+package org.terracotta.angela.common;
 
-package org.terracotta.angela.client.config;
+/**
+ *
+ */
+public interface TerracottaServerHandle {
+  TerracottaServerState getState();
 
-import java.util.Set;
+  int getJavaPid();
 
-public interface ConfigurationContext {
+  boolean isAlive();
 
-  RemotingConfigurationContext remoting();
-
-  TsaConfigurationContext tsa();
-
-  TmsConfigurationContext tms();
-
-  ClientArrayConfigurationContext clientArray();
-
-  Set<String> allHostnames();
-
-  MonitoringConfigurationContext monitoring();
-
-  ToolConfigurationContext clusterTool();
-
-  ToolConfigurationContext configTool();
-
-  VoterConfigurationContext voter();
+  void stop();
 }

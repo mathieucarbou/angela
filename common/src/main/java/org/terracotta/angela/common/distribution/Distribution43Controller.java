@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess;
-import org.terracotta.angela.common.TerracottaServerInstance.TerracottaServerInstanceProcess;
 import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
@@ -58,6 +57,7 @@ import java.util.stream.Collectors;
 import static java.io.File.separator;
 import static java.util.regex.Pattern.compile;
 import static org.terracotta.angela.common.AngelaProperties.TSA_FULL_LOGGING;
+import org.terracotta.angela.common.TerracottaServerHandle;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_ACTIVE;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_PASSIVE;
 import static org.terracotta.angela.common.TerracottaServerState.STOPPED;
@@ -66,6 +66,8 @@ import static org.terracotta.angela.common.topology.PackageType.SAG_INSTALLER;
 import static org.terracotta.angela.common.util.HostAndIpValidator.isValidHost;
 import static org.terracotta.angela.common.util.HostAndIpValidator.isValidIPv4;
 import static org.terracotta.angela.common.util.HostAndIpValidator.isValidIPv6;
+import org.terracotta.angela.common.util.ProcessUtil;
+import org.terracotta.angela.common.util.RetryUtils;
 
 /**
  * @author Aurelien Broszniowski
@@ -84,7 +86,7 @@ public class Distribution43Controller extends DistributionController {
   }
 
   @Override
-  public TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
+  public TerracottaServerHandle createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                                    Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
                                                    TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(STOPPED);
@@ -132,7 +134,48 @@ public class Distribution43Controller extends DistributionController {
 
     int wrapperPid = watchedProcess.getPid();
     Number javaPid = findWithJcmdJavaPidOf(terracottaServer.getId().toString(), tcEnv);
-    return new TerracottaServerInstanceProcess(stateRef, wrapperPid, javaPid);
+    return new TerracottaServerHandle() {
+      @Override
+      public TerracottaServerState getState() {
+        return stateRef.get();
+      }
+
+      @Override
+      public int getJavaPid() {
+        return javaPid.intValue();
+      }
+
+      @Override
+      public boolean isAlive() {
+        return watchedProcess.isAlive();
+      }
+
+      @Override
+      public void stop() {
+        try {
+          ProcessUtil.destroyGracefullyOrForcefullyAndWait(javaPid.intValue());
+        } catch (Exception e) {
+          throw new RuntimeException("Could not destroy TC server process with PID " + watchedProcess.getPid(), e);
+        }
+        try {
+          ProcessUtil.destroyGracefullyOrForcefullyAndWait(watchedProcess.getPid());
+        } catch (Exception e) {
+          throw new RuntimeException("Could not destroy TC server process with PID " + watchedProcess.getPid(), e);
+        }
+        final int maxWaitTimeMillis = 30000;
+        if (!RetryUtils.waitFor(() -> getState() == TerracottaServerState.STOPPED, maxWaitTimeMillis)) {
+          throw new RuntimeException(
+              String.format(
+                  "Tried for %dms, but server %s did not get the state %s [remained at state %s]",
+                  maxWaitTimeMillis,
+                  terracottaServer.getServerSymbolicName().getSymbolicName(),
+                  TerracottaServerState.STOPPED,
+                  getState()
+              )
+          );
+        }
+      }
+    };
   }
 
   private Number findWithJcmdJavaPidOf(String serverUuid, TerracottaCommandLineEnvironment tcEnv) {

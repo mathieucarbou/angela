@@ -60,7 +60,7 @@ public class ClusterFactory implements AutoCloseable {
   private static final String CLUSTER_TOOL = "clusterTool";
   private static final String CONFIG_TOOL = "configTool";
   private static final String VOTER = "voter";
-  private static final DateTimeFormatter PATH_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-hhmmss");
+  private static final DateTimeFormatter PATH_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-hhmmssSSS");
 
   private final List<AutoCloseable> controllers = new ArrayList<>();
   private final String idPrefix;

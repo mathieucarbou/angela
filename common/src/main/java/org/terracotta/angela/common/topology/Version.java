@@ -33,7 +33,7 @@ public class Version implements Comparable<Version> {
     return new Version(version);
   }
 
-  public Version(String version) {
+  Version(String version) {
     requireNonNull(version);
 
     String versionToSplit = version;

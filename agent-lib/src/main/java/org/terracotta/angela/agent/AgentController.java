@@ -61,6 +61,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -116,7 +117,6 @@ public class AgentController {
     TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
 
     File kitLocation;
-    File workingDir;
     if (terracottaInstall == null || !terracottaInstall.installed(distribution)) {
       if (kitInstallationPath == null) {
 
@@ -127,28 +127,39 @@ public class AgentController {
 
         logger.info("Installing kit for {} from {}", terracottaServer, distribution);
         kitLocation = kitManager.installKit(license, topology.getServersHostnames());
-        workingDir = kitManager.getWorkingDir().toFile();
-        terracottaInstall = tsaInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(workingDir, portAllocator));
+        terracottaInstall = tsaInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(portAllocator));
       } else {
         // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
         kitLocation = new File(kitInstallationPath);
-        Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
-        try {
-          Files.createDirectories(workingPath);
-        } catch (IOException e) {
-          logger.debug("Can not create {}", workingPath, e);
+        if (license !=null) {
+          license.writeToFile(kitLocation);
         }
-        workingDir = workingPath.toFile();
 
-        terracottaInstall = tsaInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(new File(kitInstallationPath), portAllocator));
+        terracottaInstall = tsaInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(portAllocator));
       }
     } else {
       kitLocation = terracottaInstall.kitLocation(distribution);
-      workingDir = terracottaInstall.installLocation(distribution);
       logger.info("Kit for {} already installed", terracottaServer);
     }
-
-    terracottaInstall.addServer(terracottaServer, kitLocation, workingDir, license, distribution, topology);
+    // work directory separate from kit directory
+    Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
+    try {
+      Files.createDirectories(workingPath);
+    } catch (IOException io) {
+      throw new UncheckedIOException(io);
+    }
+    Path nodeHome = workingPath.resolve(terracottaServer.getServerSymbolicName().getSymbolicName());
+    int index = 0;
+    // avoid sharing directories
+    while (Files.exists(nodeHome)) {
+      nodeHome = workingPath.resolve(terracottaServer.getServerSymbolicName().getSymbolicName() + "_" + index++);
+    }
+    try {
+      Files.createDirectory(nodeHome);
+    } catch (IOException io) {
+      throw new UncheckedIOException(io);
+    }
+    terracottaInstall.addServer(terracottaServer, kitLocation, nodeHome.toFile(), license, distribution, topology);
 
     return true;
   }
@@ -368,10 +379,10 @@ public class AgentController {
     if (terracottaInstall != null) {
       int installationsCount = terracottaInstall.removeServer(terracottaServer);
       if (installationsCount == 0) {
-        File installLocation = terracottaInstall.getRootInstallLocation();
-        logger.info("Uninstalling kit(s) from {} for TSA", installLocation);
         RemoteKitManager kitManager = new RemoteKitManager(instanceId, topology.getDistribution(), kitInstallationName);
         if (kitInstallationPath == null) {
+          File installLocation = Agent.WORK_DIR.resolve(instanceId.toString()).toFile();
+          logger.info("Uninstalling kit(s) from {} for TSA", installLocation);
           kitManager.deleteInstall(installLocation);
         }
         tsaInstalls.remove(instanceId);
@@ -753,37 +764,33 @@ public class AgentController {
     }
 
     static Optional<Dirs> discover(InstanceId instanceId, String hostName, Distribution distribution, License license, String kitInstallationName, String kitInstallationPath) {
+      File kitPath = null;
       if (kitInstallationPath == null) {
         RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
         if (!kitManager.isKitAvailable()) {
           return Optional.empty();
         }
-
+        kitPath = kitManager.installKit(license, Collections.singletonList(hostName));
         logger.info("Installing kit on host {} from {}", hostName, distribution);
-        return Optional.of(new Dirs(
-            kitManager.installKit(license, Collections.singletonList(hostName)),
-            kitManager.getWorkingDir().toFile(),
-            kitManager
-        ));
-
       } else {
         // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
-        File kitDir = new File(kitInstallationPath);
-        Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
-        try {
-          Files.createDirectories(workingPath);
-          if (license != null) {
-            license.writeToFile(workingPath.toFile());
-          }
-        } catch (IOException e) {
-          logger.debug("Can not create {}", workingPath, e);
-        }
-        return Optional.of(new Dirs(
-            kitDir,
-            workingPath.toFile(),
-            null
-        ));
+        kitPath = new File(kitInstallationPath);
       }
+      Path workingPath = Agent.WORK_DIR.resolve(instanceId.toString());
+      try {
+        Files.createDirectories(workingPath);
+        if (license != null) {
+          license.writeToFile(workingPath.toFile());
+        }
+      } catch (IOException e) {
+        logger.debug("Can not create {}", workingPath, e);
+        throw new UncheckedIOException(e);
+      }
+      return Optional.of(new Dirs(
+          kitPath,
+          workingPath.toFile(),
+          null
+      ));
     }
   }
 }

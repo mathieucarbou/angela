@@ -27,20 +27,15 @@ import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
-import org.zeroturnaround.process.Processes;
 
 import java.io.Closeable;
 import java.io.File;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Terracotta server instance
@@ -58,7 +53,7 @@ public class TerracottaServerInstance implements Closeable {
   private final Distribution distribution;
   private final PortAllocator portAllocator;
   private final File licenseFileLocation;
-  private volatile TerracottaServerInstanceProcess terracottaServerInstanceProcess;
+  private volatile TerracottaServerHandle serverInstance;
   private final boolean netDisruptionEnabled;
   private final Topology topology;
 
@@ -93,7 +88,15 @@ public class TerracottaServerInstance implements Closeable {
   }
 
   public void create(TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, List<String> startUpArgs) {
-    this.terracottaServerInstanceProcess = this.distributionController.createTsa(terracottaServer, kitDir, workingDir, topology, proxiedPorts, env, envOverrides, startUpArgs);
+    setServerHandle(this.distributionController.createTsa(terracottaServer, kitDir, workingDir, topology, proxiedPorts, env, envOverrides, startUpArgs));
+  }
+
+  private synchronized TerracottaServerHandle getServerHandle() {
+    return this.serverInstance;
+  }
+
+  private synchronized void setServerHandle(TerracottaServerHandle handle) {
+    this.serverInstance = handle;
   }
 
   public void disrupt(Collection<TerracottaServer> targets) {
@@ -115,7 +118,7 @@ public class TerracottaServerInstance implements Closeable {
   }
 
   public void stop() {
-    this.distributionController.stopTsa(terracottaServer.getServerSymbolicName(), terracottaServerInstanceProcess);
+    getServerHandle().stop();
   }
 
   @Override
@@ -124,18 +127,18 @@ public class TerracottaServerInstance implements Closeable {
   }
 
   public ToolExecutionResult jcmd(TerracottaCommandLineEnvironment env, String... arguments) {
-    return distributionController.invokeJcmd(terracottaServerInstanceProcess, env, arguments);
+    return distributionController.invokeJcmd(getServerHandle(), env, arguments);
   }
 
   public void waitForState(Set<TerracottaServerState> terracottaServerStates) {
     boolean isStateSame = true;
-    TerracottaServerState currentState = getTerracottaServerState();
+    TerracottaServerHandle handle = getServerHandle();
     while (isStateSame) {
       try {
         Thread.sleep(100);
 
-        isStateSame = this.terracottaServerInstanceProcess.isAlive();
-        currentState = getTerracottaServerState();
+        isStateSame = handle.isAlive();
+        TerracottaServerState currentState = handle.getState();
         for (TerracottaServerState terracottaServerState : terracottaServerStates) {
           isStateSame &= (terracottaServerState != currentState);
         }
@@ -143,22 +146,23 @@ public class TerracottaServerInstance implements Closeable {
         throw new RuntimeException(e);
       }
     }
-    if (!this.terracottaServerInstanceProcess.isAlive()) {
+    if (!handle.isAlive()) {
       StringBuilder states = new StringBuilder();
       for (TerracottaServerState terracottaServerState : terracottaServerStates) {
         states.append(terracottaServerState).append(" ");
       }
-      throw new RuntimeException("The Terracotta server was in state " + currentState +
+      throw new RuntimeException("The Terracotta server was in state " + handle.getState() +
                                  " and was expected to reach one of the states: " + states.toString()
                                  + "but died before reaching it.");
     }
   }
 
   public TerracottaServerState getTerracottaServerState() {
-    if (this.terracottaServerInstanceProcess == null) {
+    TerracottaServerHandle handle = getServerHandle();
+    if (handle == null) {
       return TerracottaServerState.STOPPED;
     } else {
-      return this.terracottaServerInstanceProcess.getState();
+      return handle.getState();
     }
   }
 
@@ -172,49 +176,6 @@ public class TerracottaServerInstance implements Closeable {
 
   public File getLicenseFileLocation() {
     return licenseFileLocation;
-  }
-
-  public static class TerracottaServerInstanceProcess {
-    private final AtomicReference<TerracottaServerState> state;
-    private final Number wrapperPid;
-    private final Number javaPid;
-
-    public TerracottaServerInstanceProcess(AtomicReference<TerracottaServerState> state, Number wrapperPid, Number javaPid) {
-      Objects.requireNonNull(wrapperPid, "wrapperPid cannot be null");
-      if (wrapperPid.intValue() < 1 || (javaPid != null && javaPid.intValue() < 1)) {
-        throw new IllegalArgumentException("Pid cannot be < 1");
-      }
-      this.wrapperPid = wrapperPid;
-      this.javaPid = javaPid;
-      this.state = state;
-    }
-
-    public TerracottaServerState getState() {
-      return state.get();
-    }
-
-    public Set<Number> getPids() {
-      Set<Number> pids = new HashSet<>();
-      pids.add(wrapperPid);
-      if (javaPid != null) {
-        pids.add(javaPid);
-      }
-      return Collections.unmodifiableSet(pids);
-    }
-
-    public Number getJavaPid() {
-      return javaPid;
-    }
-
-    public boolean isAlive() {
-      try {
-        // if at least one PID is alive, the process is considered alive
-        return (wrapperPid != null && Processes.newPidProcess(wrapperPid.intValue()).isAlive()) ||
-               (javaPid != null && Processes.newPidProcess(javaPid.intValue()).isAlive());
-      } catch (Exception e) {
-        throw new RuntimeException("Error checking liveness of a process instance with PIDs " + wrapperPid + " and " + javaPid, e);
-      }
-    }
   }
 
   private void removeDisruptionLinks() {

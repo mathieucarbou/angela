@@ -21,8 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance;
-import org.terracotta.angela.common.TerracottaServerInstance;
-import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.ToolExecutionResult;
@@ -32,8 +30,6 @@ import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
 import org.terracotta.angela.common.util.OS;
-import org.terracotta.angela.common.util.ProcessUtil;
-import org.terracotta.angela.common.util.RetryUtils;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 
@@ -43,8 +39,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.terracotta.angela.common.TerracottaServerHandle;
 
 /**
  * @author Aurelien Broszniowski
@@ -59,7 +58,7 @@ public abstract class DistributionController {
     this.distribution = distribution;
   }
 
-  public ToolExecutionResult invokeJcmd(TerracottaServerInstance.TerracottaServerInstanceProcess terracottaServerInstanceProcess, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
+  public static ToolExecutionResult invokeJcmd(TerracottaServerHandle terracottaServerInstanceProcess, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
     Number javaPid = terracottaServerInstanceProcess.getJavaPid();
     if (javaPid == null) {
       return new ToolExecutionResult(-1, Collections.singletonList("PID of java process could not be figured out"));
@@ -87,35 +86,11 @@ public abstract class DistributionController {
     }
   }
 
-  public abstract TerracottaServerInstance.TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs);
+  public abstract TerracottaServerHandle createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs);
 
   public abstract TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess startTms(File kitDir, File workingDir, TerracottaCommandLineEnvironment env, Map<String, String> envOverrides);
 
   public abstract void stopTms(File installLocation, TerracottaManagementServerInstance.TerracottaManagementServerInstanceProcess terracottaServerInstanceProcess, TerracottaCommandLineEnvironment tcEnv);
-
-  public void stopTsa(ServerSymbolicName serverSymbolicName, TerracottaServerInstance.TerracottaServerInstanceProcess terracottaServerInstanceProcess) {
-    LOGGER.debug("Destroying TC server process for {}", serverSymbolicName);
-    for (Number pid : terracottaServerInstanceProcess.getPids()) {
-      try {
-        ProcessUtil.destroyGracefullyOrForcefullyAndWait(pid.intValue());
-      } catch (Exception e) {
-        throw new RuntimeException("Could not destroy TC server process with PID " + pid, e);
-      }
-    }
-
-    final int maxWaitTimeMillis = 30000;
-    if (!RetryUtils.waitFor(() -> terracottaServerInstanceProcess.getState() == TerracottaServerState.STOPPED, maxWaitTimeMillis)) {
-      throw new RuntimeException(
-          String.format(
-              "Tried for %dms, but server %s did not get the state %s [remained at state %s]",
-              maxWaitTimeMillis,
-              serverSymbolicName.getSymbolicName(),
-              TerracottaServerState.STOPPED,
-              terracottaServerInstanceProcess.getState()
-          )
-      );
-    }
-  }
 
   public abstract TerracottaVoterInstanceProcess startVoter(TerracottaVoter terracottaVoter, File kitDir, File workingDir,
                                                             SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides);
