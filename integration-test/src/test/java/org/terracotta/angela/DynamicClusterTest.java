@@ -32,8 +32,8 @@ import java.util.concurrent.Callable;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
-import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
 import static org.terracotta.angela.common.dynamic_cluster.Stripe.stripe;
@@ -77,13 +77,15 @@ public class DynamicClusterTest {
             )
         );
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testNodeStartup", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testNodeStartup", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
-      waitFor(() -> tsa.getStarted().size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
+        waitFor(() -> tsa.getStarted().size(), is(2));
+      }
     }
   }
 
@@ -109,23 +111,25 @@ public class DynamicClusterTest {
             )
         ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicNodeAttachToSingleNodeStripe", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testDynamicNodeAttachToSingleNodeStripe", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
 
-      factory.configTool().attachNode(0, server("server-2", "localhost")
-          .tsaPort(9510)
-          .tsaGroupPort(9511)
-          .configRepo("terracotta2/repository")
-          .logs("terracotta2/logs")
-          .metaData("terracotta2/metadata")
-          .failoverPriority("availability"));
+        factory.configTool().attachNode(0, server("server-2", "localhost")
+            .tsaPort(9510)
+            .tsaGroupPort(9511)
+            .configRepo("terracotta2/repository")
+            .logs("terracotta2/logs")
+            .metaData("terracotta2/metadata")
+            .failoverPriority("availability"));
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
+      }
     }
   }
 
@@ -158,23 +162,25 @@ public class DynamicClusterTest {
             )
         ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicNodeAttachToMultiNodeStripe", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testDynamicNodeAttachToMultiNodeStripe", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
 
-      factory.configTool().attachNode(0, server("server-3", "localhost")
-          .tsaPort(9610)
-          .tsaGroupPort(9611)
-          .configRepo("terracotta3/repository")
-          .logs("terracotta3/logs")
-          .metaData("terracotta3/metadata")
-          .failoverPriority("availability"));
+        factory.configTool().attachNode(0, server("server-3", "localhost")
+            .tsaPort(9610)
+            .tsaGroupPort(9611)
+            .configRepo("terracotta3/repository")
+            .logs("terracotta3/logs")
+            .metaData("terracotta3/metadata")
+            .failoverPriority("availability"));
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(3));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(3));
+      }
     }
   }
 
@@ -200,24 +206,26 @@ public class DynamicClusterTest {
             )
         ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicStripeAttachToSingleStripeCluster", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testDynamicStripeAttachToSingleStripeCluster", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
 
-      factory.configTool().attachStripe(server("server-2", "localhost")
-          .tsaPort(9510)
-          .tsaGroupPort(9511)
-          .configRepo("terracotta2/repository")
-          .logs("terracotta2/logs")
-          .metaData("terracotta2/metadata")
-          .failoverPriority("availability"));
+        factory.configTool().attachStripe(server("server-2", "localhost")
+            .tsaPort(9510)
+            .tsaGroupPort(9511)
+            .configRepo("terracotta2/repository")
+            .logs("terracotta2/logs")
+            .metaData("terracotta2/metadata")
+            .failoverPriority("availability"));
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
+      }
     }
   }
 
@@ -252,25 +260,27 @@ public class DynamicClusterTest {
             )
         ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicStripeAttachToMultiStripeCluster", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testDynamicStripeAttachToMultiStripeCluster", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
 
-      factory.configTool().attachStripe(server("server-3", "localhost")
-          .tsaPort(9610)
-          .tsaGroupPort(9611)
-          .configRepo("terracotta3/repository")
-          .logs("terracotta3/logs")
-          .metaData("terracotta3/metadata")
-          .failoverPriority("availability"));
+        factory.configTool().attachStripe(server("server-3", "localhost")
+            .tsaPort(9610)
+            .tsaGroupPort(9611)
+            .configRepo("terracotta3/repository")
+            .logs("terracotta3/logs")
+            .metaData("terracotta3/metadata")
+            .failoverPriority("availability"));
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(3));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(3));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
+      }
     }
   }
 
@@ -304,13 +314,15 @@ public class DynamicClusterTest {
         ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testSingleStripeFormation", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
-      factory.configTool().attachAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testSingleStripeFormation", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+        factory.configTool().attachAll();
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
+      }
     }
   }
 
@@ -359,14 +371,16 @@ public class DynamicClusterTest {
             )
         ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testMultiStripeFormation", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
-      factory.configTool().attachAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testMultiStripeFormation", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+        factory.configTool().attachAll();
 
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(2));
+      }
     }
   }
 
@@ -401,24 +415,26 @@ public class DynamicClusterTest {
             )
         ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testDynamicStripeDetach", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
-      ConfigTool configTool = factory.configTool();
-      configTool.attachAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testDynamicStripeDetach", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+        ConfigTool configTool = factory.configTool();
+        configTool.attachAll();
 
-      waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(2));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
+        waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(2));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(1).size(), is(1));
 
-      TerracottaServer toDetach = tsa.getServer(1, 0);
-      configTool.detachStripe(1);
-      tsa.stop(toDetach);
+        TerracottaServer toDetach = tsa.getServer(1, 0);
+        configTool.detachStripe(1);
+        tsa.stop(toDetach);
 
-      waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
-      waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
+        waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().size(), is(1));
+        waitFor(() -> tsa.getTsaConfigurationContext().getTopology().getStripes().get(0).size(), is(1));
+      }
     }
   }
 
@@ -453,16 +469,18 @@ public class DynamicClusterTest {
                 .configTool(configTool("configTool", "localhost"))
                 .distribution(DISTRIBUTION));
     
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testNodeActivation", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
-      ConfigTool configTool = factory.configTool();
-      configTool.attachAll();
-      configTool.activate();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testNodeActivation", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+        ConfigTool configTool = factory.configTool();
+        configTool.attachAll();
+        configTool.activate();
 
-      waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(0));
-      waitFor(() -> tsa.getActives().size(), is(1));
-      waitFor(() -> tsa.getPassives().size(), is(1));
+        waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(0));
+        waitFor(() -> tsa.getActives().size(), is(1));
+        waitFor(() -> tsa.getPassives().size(), is(1));
+      }
     }
   }
 
@@ -499,16 +517,18 @@ public class DynamicClusterTest {
             )
         ).configTool(context -> context.configTool(configTool("configTool", "localhost")).distribution(DISTRIBUTION));
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testIpv6", configurationContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
-      waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(2));
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testIpv6", configurationContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+        waitFor(() -> tsa.getDiagnosticModeSevers().size(), is(2));
 
-      ConfigTool configTool = factory.configTool();
-      configTool.attachAll();
-      configTool.activate();
-      waitFor(() -> tsa.getActives().size(), is(1));
-      waitFor(() -> tsa.getPassives().size(), is(1));
+        ConfigTool configTool = factory.configTool();
+        configTool.attachAll();
+        configTool.activate();
+        waitFor(() -> tsa.getActives().size(), is(1));
+        waitFor(() -> tsa.getPassives().size(), is(1));
+      }
     }
   }
 

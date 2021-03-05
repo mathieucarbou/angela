@@ -41,6 +41,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertTrue;
 import static org.terracotta.angela.Versions.EHCACHE_VERSION;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_ACTIVE;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_PASSIVE;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
@@ -64,32 +65,34 @@ public class MultiServerTest {
             tcConfig(version(EHCACHE_VERSION), getClass().getResource("/configs/tc-config-app-consistent.xml"))))
         );
 
-    try (ClusterFactory factory = new ClusterFactory("MultiServerTest::testPartitionBetweenActivePassives", configContext)) {
-      try (Tsa tsa = factory.tsa().startAll()) {
-        TerracottaServer active = tsa.getActive();
-        Collection<TerracottaServer> passives = tsa.getPassives();
-        Iterator<TerracottaServer> iterator = passives.iterator();
-        TerracottaServer passive1 = iterator.next();
-        TerracottaServer passive2 = iterator.next();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "MultiServerTest::testPartitionBetweenActivePassives", configContext)) {
+        try (Tsa tsa = factory.tsa().startAll()) {
+          TerracottaServer active = tsa.getActive();
+          Collection<TerracottaServer> passives = tsa.getPassives();
+          Iterator<TerracottaServer> iterator = passives.iterator();
+          TerracottaServer passive1 = iterator.next();
+          TerracottaServer passive2 = iterator.next();
 
 
-        SplitCluster split1 = new SplitCluster(active);
-        SplitCluster split2 = new SplitCluster(passives);
+          SplitCluster split1 = new SplitCluster(active);
+          SplitCluster split2 = new SplitCluster(passives);
 
-        //server to server disruption with active at one end and passives at other end.
-        try (ServerToServerDisruptor disruptor = tsa.disruptionController().newServerToServerDisruptor(split1, split2)) {
+          //server to server disruption with active at one end and passives at other end.
+          try (ServerToServerDisruptor disruptor = tsa.disruptionController().newServerToServerDisruptor(split1, split2)) {
 
-          //start partition
-          disruptor.disrupt();
-          //verify active gets into blocked state and one of passives gets promoted to active
-          assertTrue(waitForServerBlocked(active));
-          assertTrue(waitForActive(tsa, passive1, passive2));
+            //start partition
+            disruptor.disrupt();
+            //verify active gets into blocked state and one of passives gets promoted to active
+            assertTrue(waitForServerBlocked(active));
+            assertTrue(waitForActive(tsa, passive1, passive2));
 
-          //stop partition
-          disruptor.undisrupt();
-          //verify former active gets zapped and becomes passive after network restored
-          assertTrue(waitForPassive(tsa, active));
+            //stop partition
+            disruptor.undisrupt();
+            //verify former active gets zapped and becomes passive after network restored
+            assertTrue(waitForPassive(tsa, active));
 
+          }
         }
       }
     }

@@ -28,7 +28,6 @@ import org.terracotta.angela.client.Tsa;
 import org.terracotta.angela.client.Voter;
 import org.terracotta.angela.client.config.ConfigurationContext;
 import org.terracotta.angela.common.cluster.Cluster;
-import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.net.PortAllocator;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 
@@ -39,6 +38,7 @@ import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import static java.util.stream.IntStream.rangeClosed;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_ACTIVE;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_PASSIVE;
 
@@ -47,7 +47,7 @@ import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_PASS
  */
 public class AngelaRule extends ExtendedTestRule {
 
-  private final PortAllocator portAllocator = new DefaultPortAllocator();
+  private final ClusterAgent localAgent;
   private ConfigurationContext configuration;
   private final boolean autoStart;
   private final boolean autoActivate;
@@ -62,7 +62,12 @@ public class AngelaRule extends ExtendedTestRule {
   private Supplier<ConfigTool> configTool;
   private Supplier<ClusterTool> clusterTool;
 
-  public AngelaRule(ConfigurationContext configuration, boolean autoStart, boolean autoActivate) {
+  public AngelaRule(ClusterAgent localAgent, ConfigurationContext configuration) {
+    this(localAgent, configuration, false, false);
+  }
+
+  public AngelaRule(ClusterAgent localAgent, ConfigurationContext configuration, boolean autoStart, boolean autoActivate) {
+    this.localAgent = localAgent;
     this.configuration = configuration;
     this.autoStart = autoStart;
     this.autoActivate = autoActivate;
@@ -82,7 +87,7 @@ public class AngelaRule extends ExtendedTestRule {
   protected void before(Description description) throws Throwable {
     final int nodePortCount = computeNodePortCount();
 
-    PortAllocator.PortReservation nodePortReservation = portAllocator.reserve(nodePortCount);
+    PortAllocator.PortReservation nodePortReservation = localAgent.getPortAllocator().reserve(nodePortCount);
 
     // assign generated ports to nodes
     for (TerracottaServer node : configuration.tsa().getTopology().getServers()) {
@@ -94,7 +99,12 @@ public class AngelaRule extends ExtendedTestRule {
       }
     }
 
-    this.clusterFactory = new ClusterFactory(description.getTestClass().getSimpleName(), configuration);
+    String id = description.getTestClass().getSimpleName();
+    if (description.getMethodName() != null) {
+      id += "." + description.getMethodName();
+    }
+
+    this.clusterFactory = new ClusterFactory(localAgent, id, configuration);
 
     tsa = memoize(clusterFactory::tsa);
     cluster = memoize(clusterFactory::cluster);
@@ -122,11 +132,6 @@ public class AngelaRule extends ExtendedTestRule {
         clusterFactory.close();
         clusterFactory = null;
       }
-    } catch (Throwable e) {
-      errs.add(e);
-    }
-    try {
-      portAllocator.close();
     } catch (Throwable e) {
       errs.add(e);
     }

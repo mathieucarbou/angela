@@ -46,6 +46,7 @@ import static org.junit.Assert.fail;
 import static org.terracotta.angela.TestUtils.TC_CONFIG_A;
 import static org.terracotta.angela.TestUtils.TC_CONFIG_AP;
 import static org.terracotta.angela.Versions.EHCACHE_VERSION;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.common.AngelaProperties.SSH_STRICT_HOST_CHECKING;
 import static org.terracotta.angela.common.TerracottaServerState.STARTED_AS_ACTIVE;
 import static org.terracotta.angela.common.TerracottaServerState.STARTING;
@@ -83,16 +84,18 @@ public class InstallTest {
         })
         .monitoring(monitoring -> monitoring.commands(EnumSet.of(HardwareMetric.DISK)));
 
-    try (ClusterFactory factory = new ClusterFactory("InstallTest::testHardwareStatsLogs", config)) {
-      Tsa tsa = factory.tsa();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "InstallTest::testHardwareStatsLogs", config)) {
+        Tsa tsa = factory.tsa();
 
-      TerracottaServer server = tsa.getServer(0, 0);
-      tsa.create(server);
-      ClusterMonitor monitor = factory.monitor().startOnAll();
+        TerracottaServer server = tsa.getServer(0, 0);
+        tsa.create(server);
+        ClusterMonitor monitor = factory.monitor().startOnAll();
 
-      Thread.sleep(3000);
+        Thread.sleep(3000);
 
-      monitor.downloadTo(resultPath);
+        monitor.downloadTo(resultPath);
+      }
     }
 
     assertThat(new File(resultPath, "/localhost/disk-stats.log").exists(), is(true));
@@ -117,11 +120,13 @@ public class InstallTest {
             tcConfig(version(EHCACHE_VERSION), TC_CONFIG_A))));
 
     SSH_STRICT_HOST_CHECKING.setProperty("false");
-    try (ClusterFactory factory = new ClusterFactory("InstallTest::testSsh", config)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
-    } finally {
-      SSH_STRICT_HOST_CHECKING.clearProperty();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "InstallTest::testSsh", config)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+      } finally {
+        SSH_STRICT_HOST_CHECKING.clearProperty();
+      }
     }
   }
 
@@ -149,9 +154,11 @@ public class InstallTest {
             }
         );
 
-    try (ClusterFactory factory = new ClusterFactory("InstallTest::testLocalInstallJava11", config)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "InstallTest::testLocalInstallJava11", config)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+      }
     }
   }
 
@@ -173,9 +180,11 @@ public class InstallTest {
               .topology(new Topology(distribution(version(EHCACHE_VERSION), KIT, TERRACOTTA_OS), tcConfig));
         });
 
-    try (ClusterFactory factory = new ClusterFactory("InstallTest::testLocalInstall", config)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "InstallTest::testLocalInstall", config)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+      }
     }
   }
 
@@ -241,16 +250,18 @@ public class InstallTest {
             }
         );
 
-    try (ClusterFactory factory = new ClusterFactory("InstallTest::testStopStalledServer", config)) {
-      Tsa tsa = factory.tsa();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "InstallTest::testStopStalledServer", config)) {
+        Tsa tsa = factory.tsa();
 
-      TerracottaServer server = tsa.getServer(0, 0);
-      tsa.create(server);
+        TerracottaServer server = tsa.getServer(0, 0);
+        tsa.create(server);
 
-      assertThat(tsa.getState(server), is(STARTING));
+        assertThat(tsa.getState(server), is(STARTING));
 
-      tsa.stop(server);
-      assertThat(tsa.getState(server), is(STOPPED));
+        tsa.stop(server);
+        assertThat(tsa.getState(server), is(STOPPED));
+      }
     }
   }
 
@@ -274,13 +285,15 @@ public class InstallTest {
             }
         );
 
-    try (ClusterFactory factory = new ClusterFactory("InstallTest::testStartCreatedServer", config)) {
-      Tsa tsa = factory.tsa();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "InstallTest::testStartCreatedServer", config)) {
+        Tsa tsa = factory.tsa();
 
-      TerracottaServer server = tsa.getServer(0, 0);
-      tsa.create(server);
-      tsa.start(server);
-      assertThat(tsa.getState(server), is(STARTED_AS_ACTIVE));
+        TerracottaServer server = tsa.getServer(0, 0);
+        tsa.create(server);
+        tsa.start(server);
+        assertThat(tsa.getState(server), is(STARTED_AS_ACTIVE));
+      }
     }
   }
 
@@ -304,12 +317,14 @@ public class InstallTest {
             }
         );
 
-    try (ClusterFactory factory = new ClusterFactory("InstallTest::testStartCreatedServer", config)) {
-      Tsa tsa = factory.tsa();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "InstallTest::testStartCreatedServer", config)) {
+        Tsa tsa = factory.tsa();
 
-      TerracottaServer server = tsa.getServer(0, 0);
-      // Server start-up must fail due to unknown argument passed
-      tsa.start(server, "--some-unknown-argument");
+        TerracottaServer server = tsa.getServer(0, 0);
+        // Server start-up must fail due to unknown argument passed
+        tsa.start(server, "--some-unknown-argument");
+      }
     }
   }
 
@@ -336,31 +351,33 @@ public class InstallTest {
             }
         );
 
-    try (ClusterFactory factory = new ClusterFactory("InstallTest::testStopPassive", config)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "InstallTest::testStopPassive", config)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
 
-      TerracottaServer passive = tsa.getPassive();
-      System.out.println("********** stop passive");
-      tsa.stop(passive);
+        TerracottaServer passive = tsa.getPassive();
+        System.out.println("********** stop passive");
+        tsa.stop(passive);
 
-      assertThat(tsa.getState(passive), is(TerracottaServerState.STOPPED));
-      assertThat(tsa.getPassive(), is(nullValue()));
+        assertThat(tsa.getState(passive), is(TerracottaServerState.STOPPED));
+        assertThat(tsa.getPassive(), is(nullValue()));
 
-      System.out.println("********** restart passive");
-      tsa.start(passive);
-      assertThat(tsa.getState(passive), is(TerracottaServerState.STARTED_AS_PASSIVE));
+        System.out.println("********** restart passive");
+        tsa.start(passive);
+        assertThat(tsa.getState(passive), is(TerracottaServerState.STARTED_AS_PASSIVE));
 
-      TerracottaServer active = tsa.getActive();
-      assertThat(tsa.getState(active), is(TerracottaServerState.STARTED_AS_ACTIVE));
-      System.out.println("********** stop active");
-      tsa.stop(active);
-      assertThat(tsa.getState(active), is(TerracottaServerState.STOPPED));
+        TerracottaServer active = tsa.getActive();
+        assertThat(tsa.getState(active), is(TerracottaServerState.STARTED_AS_ACTIVE));
+        System.out.println("********** stop active");
+        tsa.stop(active);
+        assertThat(tsa.getState(active), is(TerracottaServerState.STOPPED));
 
-      System.out.println("********** wait for passive to become active");
-      await().atMost(15, SECONDS).until(() -> tsa.getState(passive), is(TerracottaServerState.STARTED_AS_ACTIVE));
+        System.out.println("********** wait for passive to become active");
+        await().atMost(15, SECONDS).until(() -> tsa.getState(passive), is(TerracottaServerState.STARTED_AS_ACTIVE));
 
-      System.out.println("********** done, shutting down");
+        System.out.println("********** done, shutting down");
+      }
     }
   }
 }

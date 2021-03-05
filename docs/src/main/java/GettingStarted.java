@@ -35,6 +35,7 @@ import java.util.concurrent.Callable;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.is;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
 import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
 import static org.terracotta.angela.common.clientconfig.ClientArrayConfig.newClientArrayConfig;
@@ -64,11 +65,13 @@ public class GettingStarted {
                 tcConfig(version(EHCACHE_OS_VERSION), getClass().getResource("/tc-config-a.xml")))) // <5>
         );
 
-    ClusterFactory factory = new ClusterFactory("GettingStarted::configureCluster", configContext); // <6>
-    Tsa tsa = factory.tsa() // <7>
+    try (ClusterAgent agent = new ClusterAgent(false)) {  // <6>
+      ClusterFactory factory = new ClusterFactory(agent, "GettingStarted::configureCluster", configContext); // <6>
+      Tsa tsa = factory.tsa() // <7>
         .startAll(); // <8>
 
-    factory.close(); // <9>
+      factory.close(); // <9>
+    }
     // end::configureCluster[]
   }
 
@@ -80,28 +83,30 @@ public class GettingStarted {
     );
     ConfigurationContext configContext = customConfigurationContext().tsa(tsa -> tsa.topology(topology));
 
-    try (ClusterFactory factory = new ClusterFactory("GettingStarted::showTsaApi", configContext)) {
-      // tag::showTsaApi[]
-      Tsa tsa = factory.tsa() // <1>
-          .startAll(); // <2>
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "GettingStarted::showTsaApi", configContext)) {
+        // tag::showTsaApi[]
+        Tsa tsa = factory.tsa() // <1>
+            .startAll(); // <2>
 
-      TerracottaServer active = tsa.getActive(); // <3>
-      Collection<TerracottaServer> actives = tsa.getActives(); // <4>
-      TerracottaServer passive = tsa.getPassive(); // <5>
-      Collection<TerracottaServer> passives = tsa.getPassives(); // <6>
+        TerracottaServer active = tsa.getActive(); // <3>
+        Collection<TerracottaServer> actives = tsa.getActives(); // <4>
+        TerracottaServer passive = tsa.getPassive(); // <5>
+        Collection<TerracottaServer> passives = tsa.getPassives(); // <6>
 
-      tsa.stopAll(); // <7>
+        tsa.stopAll(); // <7>
 
-      tsa.start(active); // <8>
-      tsa.start(passive);
+        tsa.start(active); // <8>
+        tsa.start(passive);
 
-      tsa.stop(active); // <9>
-      Callable<TerracottaServerState> serverState = () -> tsa.getState(passive); // <10>
-      Awaitility.await()
-          .pollInterval(1, SECONDS)
-          .atMost(15, SECONDS)
-          .until(serverState, is(TerracottaServerState.STARTED_AS_ACTIVE));
-      // end::showTsaApi[]
+        tsa.stop(active); // <9>
+        Callable<TerracottaServerState> serverState = () -> tsa.getState(passive); // <10>
+        Awaitility.await()
+            .pollInterval(1, SECONDS)
+            .atMost(15, SECONDS)
+            .until(serverState, is(TerracottaServerState.STARTED_AS_ACTIVE));
+        // end::showTsaApi[]
+      }
     }
   }
 
@@ -130,26 +135,27 @@ public class GettingStarted {
                                 .metaData("terracotta2/metadata")
                                 .failoverPriority("availability"))))))
         .configTool(context -> context.configTool(configTool("configTool", "localhost")));
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "DynamicClusterTest::testSingleStripeFormation", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll(); // <2>
+        ConfigTool configTool = factory.configTool();
+        configTool.attachAll(); // <3>
 
-    try (ClusterFactory factory = new ClusterFactory("DynamicClusterTest::testSingleStripeFormation", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll(); // <2>
-      ConfigTool configTool = factory.configTool();
-      configTool.attachAll(); // <3>
+        configTool.attachStripe(server("server-3", "localhost") // <4>
+            .tsaPort(9610)
+            .tsaGroupPort(9611)
+            .configRepo("terracotta3/repository")
+            .logs("terracotta3/logs")
+            .metaData("terracotta3/metadata")
+            .failoverPriority("availability"));
 
-      configTool.attachStripe(server("server-3", "localhost") // <4>
-          .tsaPort(9610)
-          .tsaGroupPort(9611)
-          .configRepo("terracotta3/repository")
-          .logs("terracotta3/logs")
-          .metaData("terracotta3/metadata")
-          .failoverPriority("availability"));
+        TerracottaServer toDetach = tsa.getServer(0, 1);
+        configTool.detachNode(0, 1); // <5>
+        tsa.stop(toDetach); // <6>
 
-      TerracottaServer toDetach = tsa.getServer(0, 1);
-      configTool.detachNode(0, 1); // <5>
-      tsa.stop(toDetach); // <6>
-
-      configTool.activate(); // <7>
+        configTool.activate(); // <7>
+      }
     }
     // end::showDynamicTsaApi[]
   }
@@ -164,12 +170,14 @@ public class GettingStarted {
                 newClientArrayConfig().host("localhost-1", "localhost").host("localhost-2", "localhost")) // <4>
             )
         );
-    ClusterFactory factory = new ClusterFactory("GettingStarted::runClient", configContext);
-    ClientArray clientArray = factory.clientArray(); // <5>
-    ClientArrayFuture f = clientArray.executeOnAll((context) -> System.out.println("Hello")); // <6>
-    f.get(); // <7>
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      ClusterFactory factory = new ClusterFactory(agent, "GettingStarted::runClient", configContext);
+      ClientArray clientArray = factory.clientArray(); // <5>
+      ClientArrayFuture f = clientArray.executeOnAll((context) -> System.out.println("Hello")); // <6>
+      f.get(); // <7>
 
-    factory.close();
+      factory.close();
+    }
     // end::runClient[]
   }
 }

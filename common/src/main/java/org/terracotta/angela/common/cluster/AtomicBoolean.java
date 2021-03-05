@@ -22,12 +22,10 @@ import org.apache.ignite.IgniteAtomicLong;
 
 public class AtomicBoolean {
 
-  private final Ignite ignite;
   private final String name;
   private final IgniteAtomicLong igniteCounter;
 
   AtomicBoolean(Ignite ignite, String name, boolean initVal) {
-    this.ignite = ignite;
     this.name = name;
     igniteCounter = ignite.atomicLong("Atomic-Boolean-" + name, initVal ? 1L : 0L, true);
   }
@@ -50,6 +48,6 @@ public class AtomicBoolean {
 
   @Override
   public String toString() {
-    return "" + get();
+    return name + ":" + get();
   }
 }

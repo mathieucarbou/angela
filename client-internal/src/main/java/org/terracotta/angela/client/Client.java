@@ -42,6 +42,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -136,15 +137,21 @@ public class Client implements Closeable {
   }
 
   Future<Void> submit(ClientId clientId, ClientJob clientJob) {
-    IgniteFuture<Void> igniteFuture = IgniteClientHelper.executeRemotelyAsync(ignite, instanceId.toString(), ignitePort, (IgniteCallable<Void>)() -> {
+    IgniteCallable<Void> call = () -> {
       try {
         clientJob.run(new Cluster(ignite, clientId));
         return null;
       } catch (Throwable t) {
         throw new RemoteExecutionException("Remote ClientJob failed", exceptionToString(t));
       }
-    });
-    return new ClientJobFuture(igniteFuture);
+    };
+    if (ignite == null) {
+      IgniteClientHelper.executeRemotely(null,instanceId.toString(), ignitePort, call);
+      return CompletableFuture.completedFuture(null);
+    } else {
+      IgniteFuture<Void> igniteFuture = IgniteClientHelper.executeRemotelyAsync(ignite, instanceId.toString(), ignitePort, call);
+      return new ClientJobFuture(igniteFuture);
+    }
   }
 
   private static String exceptionToString(Throwable t) {

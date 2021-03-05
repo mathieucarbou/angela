@@ -103,7 +103,7 @@ public class ServerToServerDisruptor implements Disruptor {
           .stream()
           .map(topologyServers::get)
           .collect(Collectors.toList()));
-      IgniteClientHelper.executeRemotelyAsync(ignite, server.getHostname(), ignitePort, undisruptRemotely(instanceId, server, otherServers)).get();
+      IgniteClientHelper.executeRemotely(ignite, server.getHostname(), ignitePort, undisruptRemotely(instanceId, server, otherServers));
     }
     state = DisruptorState.UNDISRUPTED;
   }
