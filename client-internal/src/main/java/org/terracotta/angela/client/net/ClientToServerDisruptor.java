@@ -17,6 +17,8 @@
 
 package org.terracotta.angela.client.net;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.terracotta.angela.common.net.DisruptionProvider;
 import org.terracotta.angela.common.net.DisruptionProviderFactory;
 import org.terracotta.angela.common.net.Disruptor;
@@ -25,8 +27,6 @@ import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
 import org.terracotta.angela.common.util.HostPort;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -145,7 +145,7 @@ public class ClientToServerDisruptor implements Disruptor {
   private String getHostPortList(Collection<ServerSymbolicName> servers) {
     return servers.stream()
         .map(endPoints::get)
-        .map(s -> new HostPort(s.getHostName(), s.getPort()).getHostPort())
+        .map(s -> new HostPort(s.getHostString(), s.getPort()).getHostPort())
         .collect(Collectors.joining(","));
   }
 
