@@ -49,7 +49,15 @@ public class IgniteClientHelper {
   private final static Logger logger = LoggerFactory.getLogger(IgniteClientHelper.class);
 
   public static void executeRemotely(Ignite ignite, String hostname, int ignitePort, IgniteRunnable job) {
-    executeRemotelyAsync(ignite, hostname, ignitePort, job).get();
+    if (ignite == null) {
+      executeLocally(job);
+    } else {
+      executeRemotelyAsync(ignite, hostname, ignitePort, job).get();
+    }
+  }
+
+  private static void executeLocally(IgniteRunnable job) {
+    job.run();
   }
 
   public static IgniteFuture<Void> executeRemotelyAsync(Ignite ignite, String hostname, int ignitePort, IgniteRunnable job) {
@@ -62,7 +70,19 @@ public class IgniteClientHelper {
   }
 
   public static <R> R executeRemotely(Ignite ignite, String hostname, int ignitePort, IgniteCallable<R> job) {
-    return executeRemotelyAsync(ignite, hostname, ignitePort, job).get();
+    if (ignite == null) {
+      return executeLocally(job);
+    } else {
+      return executeRemotelyAsync(ignite, hostname, ignitePort, job).get();
+    }
+  }
+
+  private static <R> R executeLocally(IgniteCallable<R> job) {
+    try {
+      return job.call();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public static <R> IgniteFuture<R> executeRemotelyAsync(Ignite ignite, String hostname, int ignitePort, IgniteCallable<R> job) {
@@ -73,6 +93,9 @@ public class IgniteClientHelper {
   }
 
   private static void checkAgentHealth(Ignite ignite, String hostname, int ignitePort) {
+    if (ignite == null) {
+      throw new IllegalStateException("No ignite instance");
+    }
     final String nodeName = getNodeName(hostname, ignitePort);
     ClusterGroup location = ignite.cluster().forAttribute("nodename", nodeName);
     IgniteFuture<Collection<Map<String, ?>>> future = ignite.compute(location)

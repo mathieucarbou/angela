@@ -27,6 +27,7 @@ import org.terracotta.angela.common.topology.Topology;
 import java.time.Duration;
 
 import static org.awaitility.Awaitility.await;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
 import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
 import static org.terracotta.angela.common.TerracottaVoter.voter;
@@ -67,17 +68,19 @@ public class VoterTest {
         .voter(voter -> voter.distribution(distribution).addVoter(voter("voter", "localhost", "localhost:9410", "localhost:9510")))
         .configTool(context -> context.distribution(distribution).configTool(configTool("config-tool", "localhost")));
 
-    try (ClusterFactory factory = new ClusterFactory("VoterTest::testVoterStartup", configContext)) {
-      factory.tsa().startAll();
-      ConfigTool configTool = factory.configTool();
-      configTool.attachAll();
-      configTool.activate();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "VoterTest::testVoterStartup", configContext)) {
+        factory.tsa().startAll();
+        ConfigTool configTool = factory.configTool();
+        configTool.attachAll();
+        configTool.activate();
 
-      Voter voter = factory.voter();
-      voter.startAll();
-      await()
-          .atMost(Duration.ofSeconds(30))
-          .until(() -> voter.getTerracottaVoterState(configContext.voter().getTerracottaVoters().get(0)) == CONNECTED_TO_ACTIVE);
+        Voter voter = factory.voter();
+        voter.startAll();
+        await()
+            .atMost(Duration.ofSeconds(30))
+            .until(() -> voter.getTerracottaVoterState(configContext.voter().getTerracottaVoters().get(0)) == CONNECTED_TO_ACTIVE);
+      }
     }
   }
 }

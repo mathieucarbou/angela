@@ -22,12 +22,10 @@ import org.apache.ignite.IgniteAtomicLong;
 
 public class AtomicCounter {
 
-  private final Ignite ignite;
   private final String name;
   private final IgniteAtomicLong igniteCounter;
 
   AtomicCounter(Ignite ignite, String name, long initVal) {
-    this.ignite = ignite;
     this.name = name;
     igniteCounter = ignite.atomicLong("Atomic-Counter-" + name, initVal, true);
   }
@@ -54,6 +52,6 @@ public class AtomicCounter {
 
   @Override
   public String toString() {
-    return "" + get();
+    return name + ":" + get();
   }
 }

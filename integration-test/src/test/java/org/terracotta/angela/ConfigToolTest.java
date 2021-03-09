@@ -29,6 +29,7 @@ import org.terracotta.angela.common.topology.Topology;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertThat;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.client.config.custom.CustomConfigurationContext.customConfigurationContext;
 import static org.terracotta.angela.client.support.hamcrest.AngelaMatchers.successful;
 import static org.terracotta.angela.common.TerracottaConfigTool.configTool;
@@ -55,13 +56,15 @@ public class ConfigToolTest {
         .tsa(context -> context.topology(new Topology(distribution, dynamicCluster(stripe(server)))))
         .configTool(context -> context.configTool(configTool("config-tool", "localhost")).distribution(distribution));
 
-    try (ClusterFactory factory = new ClusterFactory("ConfigToolTest::testFailingClusterToolCommand", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
-      ConfigTool configTool = factory.configTool();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ConfigToolTest::testFailingClusterToolCommand", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+        ConfigTool configTool = factory.configTool();
 
-      ToolExecutionResult result = configTool.executeCommand("non-existent-command");
-      assertThat(result, is(not(successful())));
+        ToolExecutionResult result = configTool.executeCommand("non-existent-command");
+        assertThat(result, is(not(successful())));
+      }
     }
   }
 
@@ -79,13 +82,15 @@ public class ConfigToolTest {
         .tsa(context -> context.topology(new Topology(distribution, dynamicCluster(stripe(server)))))
         .configTool(context -> context.configTool(configTool("config-tool", "localhost")).distribution(distribution));
 
-    try (ClusterFactory factory = new ClusterFactory("ConfigToolTest::testValidConfigToolCommand", configContext)) {
-      Tsa tsa = factory.tsa();
-      tsa.startAll();
-      ConfigTool configTool = factory.configTool();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ConfigToolTest::testValidConfigToolCommand", configContext)) {
+        Tsa tsa = factory.tsa();
+        tsa.startAll();
+        ConfigTool configTool = factory.configTool();
 
-      ToolExecutionResult result = configTool.executeCommand("get", "-s", "localhost", "-c", "offheap-resources");
-      System.out.println("######Result: " + result);
+        ToolExecutionResult result = configTool.executeCommand("get", "-s", "localhost", "-c", "offheap-resources");
+        System.out.println("######Result: " + result);
+      }
     }
   }
 }

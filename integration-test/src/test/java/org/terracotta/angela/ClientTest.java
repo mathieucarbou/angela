@@ -67,6 +67,7 @@ import static org.hamcrest.number.OrderingComparison.greaterThan;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.terracotta.angela.TestUtils.TC_CONFIG_A;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.common.clientconfig.ClientArrayConfig.newClientArrayConfig;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
 import static org.terracotta.angela.common.tcconfig.TcConfig.tcConfig;
@@ -84,7 +85,7 @@ public class ClientTest {
     String fileContent = "Test data";
     String localFolder = "target/myNewFolderClient";
 
-    try (ClusterFactory instance = new ClusterFactory("ClientTest::testRemoteClient", configContext)) {
+    try (ClusterAgent agent = new ClusterAgent(false);ClusterFactory instance = new ClusterFactory(agent, "ClientTest::testRemoteClient", configContext)) {
       try (ClientArray clientArray = instance.clientArray()) {
         ClientArrayFuture f = clientArray.executeOnAll((cluster) -> {
           System.out.println("Writing to file");
@@ -113,7 +114,7 @@ public class ClientTest {
     String fileContent = "Test data";
     String localFolder = "target/myNewFolderMultipleClients";
 
-    try (ClusterFactory instance = new ClusterFactory("ClientTest::testRemoteClient", configContext)) {
+    try (ClusterAgent agent = new ClusterAgent(false);ClusterFactory instance = new ClusterFactory(agent, "ClientTest::testRemoteClient", configContext)) {
       try (ClientArray clientArray = instance.clientArray()) {
         Set<String> filecontents = new HashSet<>();
 
@@ -151,7 +152,8 @@ public class ClientTest {
     String fileContent = "Test data";
     String localFolder = "target/myNewFolderMultipleJobs";
 
-    try (ClusterFactory instance = new ClusterFactory("ClientTest::testRemoteClient", configContext)) {
+    try (ClusterAgent agent = new ClusterAgent(false);
+      ClusterFactory instance = new ClusterFactory(agent, "ClientTest::testRemoteClient", configContext)) {
       try (ClientArray clientArray = instance.clientArray()) {
         Set<String> filecontents = new HashSet<>();
 
@@ -197,7 +199,7 @@ public class ClientTest {
                 .hostSerie(3, "localhost")
             )));
 
-    try (ClusterFactory instance = new ClusterFactory("ClientTest::testMultipleClientsOnSameHost", configContext)) {
+    try (ClusterAgent agent = new ClusterAgent(false);ClusterFactory instance = new ClusterFactory(agent, "ClientTest::testMultipleClientsOnSameHost", configContext)) {
       try (ClientArray clientArray = instance.clientArray()) {
         ClientArrayFuture f = clientArray.executeOnAll((cluster) -> System.out.println("hello world"));
         f.get();
@@ -219,21 +221,23 @@ public class ClientTest {
                 )
             )
         );
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testMultipleClientsOnSameHost", configContext)) {
-      try (ClientArray clientArray = factory.clientArray()) {
-        ClientJob clientJob = (cluster) -> {
-          AtomicCounter counter = cluster.atomicCounter("countJobs", 0);
-          long n = counter.incrementAndGet();
-          System.out.println("hello world from job number " + n);
-        };
-        ClientArrayFuture f = clientArray.executeOnAll(clientJob, clientsPerMachine);
-        f.get();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testMultipleClientsOnSameHost", configContext)) {
+        try (ClientArray clientArray = factory.clientArray()) {
+          ClientJob clientJob = (cluster) -> {
+            AtomicCounter counter = cluster.atomicCounter("countJobs", 0);
+            long n = counter.incrementAndGet();
+            System.out.println("hello world from job number " + n);
+          };
+          ClientArrayFuture f = clientArray.executeOnAll(clientJob, clientsPerMachine);
+          f.get();
 
-        long expectedJobs = clientsPerMachine * serieLength;
-        long actualJobs = factory.cluster()
-            .atomicCounter("countJobs", 0)
-            .get();
-        assertThat(actualJobs, is(expectedJobs));
+          long expectedJobs = clientsPerMachine * serieLength;
+          long actualJobs = factory.cluster()
+              .atomicCounter("countJobs", 0)
+              .get();
+          assertThat(actualJobs, is(expectedJobs));
+        }
       }
     }
   }
@@ -247,7 +251,7 @@ public class ClientTest {
         .clientArray(clientArray -> clientArray
             .clientArrayTopology(new ClientArrayTopology(distribution, newClientArrayConfig().host("localhost"))));
 
-    try (ClusterFactory instance = new ClusterFactory("ClientTest::testRemoteClient", configContext)) {
+    try (ClusterAgent agent = new ClusterAgent(false);ClusterFactory instance = new ClusterFactory(agent, "ClientTest::testRemoteClient", configContext)) {
       try (ClientArray clientArray = instance.clientArray()) {
         ClientArrayFuture f = clientArray.executeOnAll((cluster) -> System.out.println("hello world 1"));
         f.get();
@@ -264,7 +268,7 @@ public class ClientTest {
     ConfigurationContext configContext = CustomConfigurationContext.customConfigurationContext()
         .clientArray(clientArray -> clientArray.clientArrayTopology(new ClientArrayTopology(newClientArrayConfig().host("localhost"))));
 
-    try (ClusterFactory instance = new ClusterFactory("ClientTest::testRemoteClient", configContext)) {
+    try (ClusterAgent agent = new ClusterAgent(false);ClusterFactory instance = new ClusterFactory(agent, "ClientTest::testRemoteClient", configContext)) {
       try (ClientArray clientArray = instance.clientArray()) {
         ClientArrayFuture f = clientArray.executeOnAll((cluster) -> System.out.println("hello world 1"));
         f.get();
@@ -277,7 +281,7 @@ public class ClientTest {
     ConfigurationContext configContext = CustomConfigurationContext.customConfigurationContext()
         .clientArray(clientArray -> clientArray.clientArrayTopology(new ClientArrayTopology(newClientArrayConfig().hostSerie(2, "localhost"))));
 
-    try (ClusterFactory instance = new ClusterFactory("ClientTest::testClientArrayExceptionReported", configContext)) {
+    try (ClusterAgent agent = new ClusterAgent(false);ClusterFactory instance = new ClusterFactory(agent, "ClientTest::testClientArrayExceptionReported", configContext)) {
       try (ClientArray clientArray = instance.clientArray()) {
         ClientArrayFuture f = clientArray.executeOnAll((cluster) -> {
           String message = "Just Say No (tm) " + cluster.atomicCounter("testClientArrayExceptionReportedCounter", 0L)
@@ -315,30 +319,32 @@ public class ClientTest {
         .clientArray(clientArray -> clientArray.license(LicenseType.TERRACOTTA_OS.defaultLicense()).clientArrayTopology(ct))
         .monitoring(monitoring -> monitoring.commands(EnumSet.of(HardwareMetric.CPU)));
 
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testClientCpuMetricsLogs", configContext)) {
-      ClusterMonitor monitor = factory.monitor();
-      ClientJob clientJob = (cluster) -> {
-        System.out.println("hello");
-        Thread.sleep(18000);
-        System.out.println("again");
-      };
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testClientCpuMetricsLogs", configContext)) {
+        ClusterMonitor monitor = factory.monitor();
+        ClientJob clientJob = (cluster) -> {
+          System.out.println("hello");
+          Thread.sleep(18000);
+          System.out.println("again");
+        };
 
-      ClientArray clientArray = factory.clientArray();
-      monitor.startOnAll();
+        ClientArray clientArray = factory.clientArray();
+        monitor.startOnAll();
 
-      ClientArrayFuture future = clientArray.executeOnAll(clientJob);
-      future.get();
+        ClientArrayFuture future = clientArray.executeOnAll(clientJob);
+        future.get();
 
-      monitor.downloadTo(resultPath.toFile());
-      monitor.stopOnAll();
+        monitor.downloadTo(resultPath.toFile());
+        monitor.stopOnAll();
 
-      monitor.processMetrics((hostname, transportableFile) -> {
-        assertThat(hostname, is(clientHostname));
-        assertThat(transportableFile.getName(), is("cpu-stats.log"));
-        byte[] content = transportableFile.getContent();
-        assertNotNull(content);
-        assertThat(content.length, greaterThan(0));
-      });
+        monitor.processMetrics((hostname, transportableFile) -> {
+          assertThat(hostname, is(clientHostname));
+          assertThat(transportableFile.getName(), is("cpu-stats.log"));
+          byte[] content = transportableFile.getContent();
+          assertNotNull(content);
+          assertThat(content.length, greaterThan(0));
+        });
+      }
     }
   }
 
@@ -354,22 +360,24 @@ public class ClientTest {
         .clientArray(clientArray -> clientArray.license(LicenseType.TERRACOTTA_OS.defaultLicense()).clientArrayTopology(ct))
         .monitoring(monitoring -> monitoring.commands(EnumSet.allOf(HardwareMetric.class)));
 
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testClientAllHardwareMetricsLogs", configContext)) {
-      ClusterMonitor monitor = factory.monitor();
-      ClientJob clientJob = (cluster) -> {
-        System.out.println("hello");
-        Thread.sleep(18000);
-        System.out.println("again");
-      };
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testClientAllHardwareMetricsLogs", configContext)) {
+        ClusterMonitor monitor = factory.monitor();
+        ClientJob clientJob = (cluster) -> {
+          System.out.println("hello");
+          Thread.sleep(18000);
+          System.out.println("again");
+        };
 
-      ClientArray clientArray = factory.clientArray();
-      monitor.startOnAll();
+        ClientArray clientArray = factory.clientArray();
+        monitor.startOnAll();
 
-      ClientArrayFuture future = clientArray.executeOnAll(clientJob);
-      future.get();
+        ClientArrayFuture future = clientArray.executeOnAll(clientJob);
+        future.get();
 
-      monitor.downloadTo(resultPath.toFile());
-      monitor.stopOnAll();
+        monitor.downloadTo(resultPath.toFile());
+        monitor.stopOnAll();
+      }
     }
 
     final Path statFile = resultPath.resolve(clientHostname);
@@ -392,24 +400,26 @@ public class ClientTest {
         .clientArray(clientArray -> clientArray.license(LicenseType.TERRACOTTA_OS.defaultLicense()).clientArrayTopology(ct))
         .monitoring(monitoring -> monitoring.command(metric, new MonitoringCommand("dummy", "command")));
 
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testClientDummyMemoryMetrics", configContext)) {
-      ClusterMonitor monitor = factory.monitor();
-      ClientJob clientJob = (cluster) -> {
-        System.out.println("hello");
-        Thread.sleep(18000);
-        System.out.println("again");
-      };
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testClientDummyMemoryMetrics", configContext)) {
+        ClusterMonitor monitor = factory.monitor();
+        ClientJob clientJob = (cluster) -> {
+          System.out.println("hello");
+          Thread.sleep(18000);
+          System.out.println("again");
+        };
 
-      ClientArray clientArray = factory.clientArray();
-      monitor.startOnAll();
+        ClientArray clientArray = factory.clientArray();
+        monitor.startOnAll();
 
-      ClientArrayFuture future = clientArray.executeOnAll(clientJob);
-      future.get();
+        ClientArrayFuture future = clientArray.executeOnAll(clientJob);
+        future.get();
 
-      monitor.downloadTo(resultPath.toFile());
-      assertThat(monitor.isMonitoringRunning(metric), is(false));
+        monitor.downloadTo(resultPath.toFile());
+        assertThat(monitor.isMonitoringRunning(metric), is(false));
 
-      monitor.stopOnAll();
+        monitor.stopOnAll();
+      }
     }
   }
 
@@ -421,8 +431,10 @@ public class ClientTest {
     ConfigurationContext configContext = CustomConfigurationContext.customConfigurationContext()
         .clientArray(clientArray -> clientArray.license(LicenseType.TERRACOTTA_OS.defaultLicense()).clientArrayTopology(ct));
 
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testClientDummyMemoryMetrics", configContext)) {
-      factory.monitor();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testClientDummyMemoryMetrics", configContext)) {
+        factory.monitor();
+      }
     }
   }
 
@@ -438,14 +450,16 @@ public class ClientTest {
                 .host("remote-server")))
         );
 
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testMixingLocalhostWithRemote", configContext)) {
-      factory.tsa();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testMixingLocalhostWithRemote", configContext)) {
+        factory.tsa();
 
-      try {
-        factory.clientArray();
-        fail("expected exception");
-      } catch (Exception e) {
-        // expected
+        try {
+          factory.clientArray();
+          fail("expected exception");
+        } catch (Exception e) {
+          // expected
+        }
       }
     }
   }
@@ -461,31 +475,33 @@ public class ClientTest {
         .clientArray(clientArray -> clientArray
             .clientArrayTopology(new ClientArrayTopology(distribution, newClientArrayConfig().host("localhost"))));
 
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testBarrier", configContext)) {
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testBarrier", configContext)) {
 
-      ClientJob clientJob = cluster -> {
-        Barrier daBarrier = cluster.barrier("daBarrier", clientCount);
-        for (int i = 0; i < loopCount; i++) {
-          daBarrier.await();
-          AtomicCounter counter = cluster.atomicCounter("ClientTest::testBarrier::counter", 0L);
-          counter.incrementAndGet();
+        ClientJob clientJob = cluster -> {
+          Barrier daBarrier = cluster.barrier("daBarrier", clientCount);
+          for (int i = 0; i < loopCount; i++) {
+            daBarrier.await();
+            AtomicCounter counter = cluster.atomicCounter("ClientTest::testBarrier::counter", 0L);
+            counter.incrementAndGet();
+          }
+        };
+
+        List<Future<Void>> futures = new ArrayList<>();
+        for (int i = 0; i < clientCount; i++) {
+          ClientArray clients = factory.clientArray();
+          ClientArrayFuture caf = clients.executeOnAll(clientJob);
+          futures.addAll(caf.getFutures());
         }
-      };
 
-      List<Future<Void>> futures = new ArrayList<>();
-      for (int i = 0; i < clientCount; i++) {
-        ClientArray clients = factory.clientArray();
-        ClientArrayFuture caf = clients.executeOnAll(clientJob);
-        futures.addAll(caf.getFutures());
+        // if the barrier hangs forever, one of those futures will timeout on get and throw
+        for (Future<Void> future : futures) {
+          future.get(30, TimeUnit.SECONDS);
+        }
+
+        AtomicCounter counter = factory.cluster().atomicCounter("ClientTest::testBarrier::counter", 0L);
+        assertThat(counter.get(), is((long) clientCount * loopCount));
       }
-
-      // if the barrier hangs forever, one of those futures will timeout on get and throw
-      for (Future<Void> future : futures) {
-        future.get(30, TimeUnit.SECONDS);
-      }
-
-      AtomicCounter counter = factory.cluster().atomicCounter("ClientTest::testBarrier::counter", 0L);
-      assertThat(counter.get(), is((long) clientCount * loopCount));
     }
   }
 
@@ -501,23 +517,24 @@ public class ClientTest {
     ConfigurationContext configContext = CustomConfigurationContext.customConfigurationContext()
         .clientArray(clientArray -> clientArray.license(LicenseType.TERRACOTTA_OS.defaultLicense()).clientArrayTopology(ct));
 
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testMixingLocalhostWithRemote", configContext)) {
-      ClientJob clientJob = (cluster) -> {
-        System.out.println("hello");
-        Thread.sleep(1000);
-        System.out.println("again");
-      };
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testMixingLocalhostWithRemote", configContext)) {
+        ClientJob clientJob = (cluster) -> {
+          System.out.println("hello");
+          Thread.sleep(1000);
+          System.out.println("again");
+        };
 
-      { // executeAll
-        ClientArray clientArray = factory.clientArray();
+        { // executeAll
+          ClientArray clientArray = factory.clientArray();
 
-        ClientArrayFuture f = clientArray.executeOnAll(clientJob);
-        f.get();
-        Client rc = clientArray.getClients().stream().findFirst().get();
+          ClientArrayFuture f = clientArray.executeOnAll(clientJob);
+          f.get();
+          Client rc = clientArray.getClients().stream().findFirst().get();
 
-        rc.browse(".").downloadTo(new File("/tmp"));
+          rc.browse(".").downloadTo(new File("/tmp"));
+        }
       }
-
     }
   }
 
@@ -526,23 +543,25 @@ public class ClientTest {
     ConfigurationContext configContext = CustomConfigurationContext.customConfigurationContext()
         .clientArray(clientArray -> clientArray.clientArrayTopology(new ClientArrayTopology(newClientArrayConfig().hostSerie(2, "localhost"))));
 
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testClientArrayReferenceShared", configContext)) {
-      try (ClientArray clientArray = factory.clientArray()) {
-        ClientArrayFuture f = clientArray.executeOnAll((cluster) -> {
-          AtomicReference<String> strRef = cluster.atomicReference("string", null);
-          strRef.set("A");
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testClientArrayReferenceShared", configContext)) {
+        try (ClientArray clientArray = factory.clientArray()) {
+          ClientArrayFuture f = clientArray.executeOnAll((cluster) -> {
+            AtomicReference<String> strRef = cluster.atomicReference("string", null);
+            strRef.set("A");
+
+            AtomicReference<Integer> intRef = cluster.atomicReference("int", 0);
+            intRef.compareAndSet(0, 1);
+          });
+          f.get();
+          Cluster cluster = factory.cluster();
+
+          AtomicReference<String> strRef = cluster.atomicReference("string", "X");
+          assertThat(strRef.get(), is("A"));
 
           AtomicReference<Integer> intRef = cluster.atomicReference("int", 0);
-          intRef.compareAndSet(0, 1);
-        });
-        f.get();
-        Cluster cluster = factory.cluster();
-
-        AtomicReference<String> strRef = cluster.atomicReference("string", "X");
-        assertThat(strRef.get(), is("A"));
-
-        AtomicReference<Integer> intRef = cluster.atomicReference("int", 0);
-        assertThat(intRef.get(), is(1));
+          assertThat(intRef.get(), is(1));
+        }
       }
     }
   }
@@ -553,18 +572,20 @@ public class ClientTest {
         .hostSerie(2, "localhost");
     ConfigurationContext configContext = CustomConfigurationContext.customConfigurationContext()
         .clientArray(clientArray -> clientArray.clientArrayTopology(new ClientArrayTopology(hostSerie)));
-    try (ClusterFactory factory = new ClusterFactory("ClientTest::testClientArrayReferenceShared", configContext)) {
-      try (ClientArray clientArray = factory.clientArray()) {
-        ClientJob clientJob = (Cluster cluster) -> {
-          ClientId clientId = cluster.getClientId();
-          assertThat(clientId.getHostname(), is("localhost"));
-          assertThat(clientId.getSymbolicName().getSymbolicName(),
-              anyOf(is("localhost-0"), is("localhost-1")));
-        };
-        ClientArrayFuture f = clientArray.executeOnAll(clientJob);
-        f.get();
-        Cluster cluster = factory.cluster();
-        assertNull(cluster.getClientId());
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "ClientTest::testClientArrayReferenceShared", configContext)) {
+        try (ClientArray clientArray = factory.clientArray()) {
+          ClientJob clientJob = (Cluster cluster) -> {
+            ClientId clientId = cluster.getClientId();
+            assertThat(clientId.getHostname(), is("localhost"));
+            assertThat(clientId.getSymbolicName().getSymbolicName(),
+                anyOf(is("localhost-0"), is("localhost-1")));
+          };
+          ClientArrayFuture f = clientArray.executeOnAll(clientJob);
+          f.get();
+          Cluster cluster = factory.cluster();
+          assertNull(cluster.getClientId());
+        }
       }
     }
   }

@@ -19,7 +19,6 @@ package org.terracotta.angela.client.support.hamcrest;
 import org.hamcrest.CustomTypeSafeMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
-import org.terracotta.angela.client.support.junit.NodeOutputRule;
 import org.terracotta.angela.common.ToolExecutionResult;
 
 import java.util.Collection;
@@ -30,15 +29,6 @@ import java.util.List;
  * @author Mathieu Carbou
  */
 public class AngelaMatchers {
-
-  public static Matcher<NodeOutputRule.NodeLog> containsLog(String text) {
-    return new CustomTypeSafeMatcher<NodeOutputRule.NodeLog>("contains " + text) {
-      @Override
-      protected boolean matchesSafely(NodeOutputRule.NodeLog result) {
-        return result.streamLogsDescending().anyMatch(line -> line.contains(text));
-      }
-    };
-  }
 
   public static Matcher<ToolExecutionResult> successful() {
     return new CustomTypeSafeMatcher<ToolExecutionResult>("successful") {

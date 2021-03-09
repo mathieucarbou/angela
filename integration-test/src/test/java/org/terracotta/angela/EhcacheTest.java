@@ -43,6 +43,7 @@ import java.net.URI;
 import static junit.framework.TestCase.assertEquals;
 import static org.terracotta.angela.Versions.EHCACHE_SNAPSHOT_VERSION;
 import static org.terracotta.angela.Versions.EHCACHE_VERSION;
+import org.terracotta.angela.client.ClusterAgent;
 import static org.terracotta.angela.common.clientconfig.ClientArrayConfig.newClientArrayConfig;
 import static org.terracotta.angela.common.distribution.Distribution.distribution;
 import static org.terracotta.angela.common.tcconfig.TcConfig.tcConfig;
@@ -61,8 +62,10 @@ public class EhcacheTest {
             )
         );
 
-    try (ClusterFactory factory = new ClusterFactory("EhcacheTest::testTsaWithEhcacheReleaseKit", configContext)) {
-      factory.tsa().startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "EhcacheTest::testTsaWithEhcacheReleaseKit", configContext)) {
+        factory.tsa().startAll();
+      }
     }
   }
 
@@ -78,8 +81,10 @@ public class EhcacheTest {
             )
         );
 
-    try (ClusterFactory factory = new ClusterFactory("EhcacheTest::testTsaWithEhcacheSnapshotKit", configContext)) {
-      factory.tsa().startAll();
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "EhcacheTest::testTsaWithEhcacheSnapshotKit", configContext)) {
+        factory.tsa().startAll();
+      }
     }
   }
 
@@ -102,28 +107,30 @@ public class EhcacheTest {
             )
         );
 
-    try (ClusterFactory factory = new ClusterFactory("EhcacheTest::testClusteredEhcacheOperations", configContext)) {
-      factory.tsa().startAll();
-      ClientArray clientArray = factory.clientArray();
-      String uri = factory.tsa().uri().toString() + "/clustered-cache-manager";
-      String cacheAlias = "clustered-cache";
+    try (ClusterAgent agent = new ClusterAgent(false)) {
+      try (ClusterFactory factory = new ClusterFactory(agent, "EhcacheTest::testClusteredEhcacheOperations", configContext)) {
+        factory.tsa().startAll();
+        ClientArray clientArray = factory.clientArray();
+        String uri = factory.tsa().uri().toString() + "/clustered-cache-manager";
+        String cacheAlias = "clustered-cache";
 
-      ClientJob clientJob = (cluster) -> {
-        try (CacheManager cacheManager = createCacheManager(uri, cacheAlias)) {
-          Cache<Long, String> cache = cacheManager.getCache(cacheAlias, Long.class, String.class);
-          final int numKeys = 10;
-          for (long key = 0; key < numKeys; key++) {
-            cache.put(key, String.valueOf(key) + key);
+        ClientJob clientJob = (cluster) -> {
+          try (CacheManager cacheManager = createCacheManager(uri, cacheAlias)) {
+            Cache<Long, String> cache = cacheManager.getCache(cacheAlias, Long.class, String.class);
+            final int numKeys = 10;
+            for (long key = 0; key < numKeys; key++) {
+              cache.put(key, String.valueOf(key) + key);
+            }
+
+            for (long key = 0; key < numKeys; key++) {
+              assertEquals(cache.get(key), String.valueOf(key) + key);
+            }
           }
+        };
 
-          for (long key = 0; key < numKeys; key++) {
-            assertEquals(cache.get(key), String.valueOf(key) + key);
-          }
-        }
-      };
-
-      ClientArrayFuture caf = clientArray.executeOnAll(clientJob);
-      caf.get();
+        ClientArrayFuture caf = clientArray.executeOnAll(clientJob);
+        caf.get();
+      }
     }
   }
 

@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.terracotta.angela.common.AngelaProperties.DIRECT_JOIN;
 import static org.terracotta.angela.common.AngelaProperties.IGNITE_LOGGING;
@@ -57,6 +58,7 @@ public class Agent {
   public static final Path ROOT_DIR;
   public static final Path WORK_DIR;
   public static final Path IGNITE_DIR;
+  //  should this really be static?
   public static volatile AgentController controller;
 
   static {
@@ -81,7 +83,26 @@ public class Agent {
     Runtime.getRuntime().addShutdownHook(new Thread(agent::close));
   }
 
+  public void startLocalCluster() {
+    if (!Objects.isNull(controller)) {
+      throw new IllegalStateException("controller already initiated");
+    }
+
+    logger.info("Root directory is: {}", ROOT_DIR);
+    logger.info("Starting local only cluster");
+    createAndValidateDir(ROOT_DIR);
+    createAndValidateDir(WORK_DIR);
+    
+    controller = new LocalAgentController(new DefaultPortAllocator());
+    // Do not use logger here as the marker is being grep'ed at and we do not want to depend upon the logger config
+    System.out.println(AGENT_IS_READY_MARKER_LOG);
+    System.out.flush();
+  }
+
   public void startCluster(Collection<String> peers, String nodeName, int igniteDiscoveryPort, int igniteComPort) {
+    if (!Objects.isNull(controller)) {
+      throw new IllegalStateException("controller already initiated");
+    }
     logger.info("Root directory is: {}", ROOT_DIR);
     logger.info("Nodename: {} added to cluster", nodeName);
     createAndValidateDir(ROOT_DIR);
@@ -133,6 +154,7 @@ public class Agent {
       ignite.close();
       ignite = null;
     }
+    controller = null;
   }
 
   public Ignite getIgnite() {

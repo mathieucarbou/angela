@@ -41,7 +41,7 @@
     <java.version>1.8</java.version>
     <maven.compiler.target>1.8</maven.compiler.target>
     <maven.compiler.source>1.8</maven.compiler.source>
-    <terracotta-utilities.version>0.0.6</terracotta-utilities.version>
+    <terracotta-utilities.version>0.0.8</terracotta-utilities.version>
 
     <!-- Third-party dependencies -->
     <ignite.version>2.8.1</ignite.version>

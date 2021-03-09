@@ -268,7 +268,7 @@ public class Tsa implements AutoCloseable {
   public Tsa start(TerracottaServer terracottaServer, Map<String, String> envOverrides, String... startUpArgs) {
     create(terracottaServer, envOverrides, startUpArgs);
     IgniteRunnable runnable = () -> Agent.controller.waitForTsaInState(instanceId, terracottaServer,
-        of(STARTED_AS_ACTIVE, STARTED_AS_PASSIVE, STARTED_IN_DIAGNOSTIC_MODE, START_SUSPENDED));
+        of(STARTED_AS_ACTIVE, STARTED_AS_PASSIVE, STARTED_IN_DIAGNOSTIC_MODE, START_SUSPENDED, STOPPED));
     IgniteClientHelper.executeRemotely(ignite, terracottaServer.getHostname(), ignitePort, runnable);
     return this;
   }

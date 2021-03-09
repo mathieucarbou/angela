@@ -151,13 +151,17 @@ public class AgentController {
     Path nodeHome = workingPath.resolve(terracottaServer.getServerSymbolicName().getSymbolicName());
     int index = 0;
     // avoid sharing directories
-    while (Files.exists(nodeHome)) {
-      nodeHome = workingPath.resolve(terracottaServer.getServerSymbolicName().getSymbolicName() + "_" + index++);
-    }
-    try {
-      Files.createDirectory(nodeHome);
-    } catch (IOException io) {
-      throw new UncheckedIOException(io);
+    while (true) {
+      try {
+        Files.createDirectory(nodeHome);
+        break;
+      } catch (IOException io) {
+        if (index > 9) {
+          throw new UncheckedIOException(io);
+        } else {
+          nodeHome = workingPath.resolve(terracottaServer.getServerSymbolicName().getSymbolicName() + "_" + index++);
+        }
+      }
     }
     terracottaInstall.addServer(terracottaServer, kitLocation, nodeHome.toFile(), license, distribution, topology);
 

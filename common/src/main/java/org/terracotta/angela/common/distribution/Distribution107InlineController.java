@@ -65,7 +65,9 @@ public class Distribution107InlineController extends Distribution107Controller {
         try {
           ref.set(startIsolatedServer(kitDir, serverName, serverWorking, cmd));
         } catch (Throwable tt) {
+          isAlive.set(false);
           ref.set(null);
+          LOGGER.error("restart failed", tt);
           throw tt;
         }
       }
@@ -78,33 +80,41 @@ public class Distribution107InlineController extends Distribution107Controller {
 
       @Override
       public TerracottaServerState getState() {
-        String state = invoke("getState").toString();
-        switch (state) {
-          case "State[ DIAGNOSTIC ]":
-            return TerracottaServerState.STARTED_IN_DIAGNOSTIC_MODE;
-          case "State[ START-STATE ]":
-            if (Boolean.parseBoolean(invokeOnServerMBean("ConsistencyManager", "isBlocked", null))) {
-              return TerracottaServerState.START_SUSPENDED;
-            }
-            return TerracottaServerState.STARTING;
-          case "State[ STOP-STATE ]":
-            return TerracottaServerState.STOPPED;
-          case "State[ ACTIVE-COORDINATOR ]":
-            if (Boolean.parseBoolean(invokeOnServerMBean("ConsistencyManager", "isBlocked", null))) {
-              return TerracottaServerState.START_SUSPENDED;
-            }
-            return TerracottaServerState.STARTED_AS_ACTIVE;
-          case "State[ PASSIVE ]":
-          case "State[ PASSIVE-SYNCING ]":
-          case "State[ PASSIVE-UNINITIALIZED ]":
-            return TerracottaServerState.STARTING;
-          case "State[ PASSIVE-STANDBY ]":
-            if (Boolean.parseBoolean(invokeOnServerMBean("ConsistencyManager", "isBlocked", null))) {
-              return TerracottaServerState.START_SUSPENDED;
-            }
-            return TerracottaServerState.STARTED_AS_PASSIVE;
-          default:
-            return ((Boolean)invoke("isStopped")) ? TerracottaServerState.STOPPED : TerracottaServerState.STARTING;
+        if (isAlive()) {
+          String state = invoke("getState").toString();
+          switch (state) {
+            case "State[ DIAGNOSTIC ]":
+              return TerracottaServerState.STARTED_IN_DIAGNOSTIC_MODE;
+            case "State[ START-STATE ]":
+              if (Boolean.parseBoolean(invokeOnServerMBean("ConsistencyManager", "isBlocked", null))) {
+                return TerracottaServerState.START_SUSPENDED;
+              }
+              return TerracottaServerState.STARTING;
+            case "State[ STOP-STATE ]":
+              return TerracottaServerState.STOPPED;
+            case "State[ ACTIVE-COORDINATOR ]":
+              if (Boolean.parseBoolean(invokeOnServerMBean("ConsistencyManager", "isBlocked", null))) {
+                return TerracottaServerState.START_SUSPENDED;
+              }
+              if (Boolean.parseBoolean(invokeOnServerMBean("Server", "isAcceptingClients", null))) {
+                return TerracottaServerState.STARTED_AS_ACTIVE;
+              } else {
+                return TerracottaServerState.START_SUSPENDED;
+              }
+            case "State[ PASSIVE ]":
+            case "State[ PASSIVE-SYNCING ]":
+            case "State[ PASSIVE-UNINITIALIZED ]":
+              return TerracottaServerState.STARTING;
+            case "State[ PASSIVE-STANDBY ]":
+              if (Boolean.parseBoolean(invokeOnServerMBean("ConsistencyManager", "isBlocked", null))) {
+                return TerracottaServerState.START_SUSPENDED;
+              }
+              return TerracottaServerState.STARTED_AS_PASSIVE;
+            default:
+              return (!isAlive() || ((Boolean)invoke("isStopped"))) ? TerracottaServerState.STOPPED : TerracottaServerState.STARTING;
+          }
+        } else {
+          return TerracottaServerState.STOPPED;
         }
       }
 
@@ -156,11 +166,7 @@ public class Distribution107InlineController extends Distribution107Controller {
       Method m = server.getClass().getMethod(method, clazz);
       m.setAccessible(true);
       return m.invoke(server, args);
-    } catch (NoSuchMethodException |
-            SecurityException |
-            IllegalAccessException |
-            IllegalArgumentException |
-            InvocationTargetException s) {
+    } catch (Exception s) {
       LOGGER.warn("unable to invoke", s);
       return "ERROR";
     }
@@ -175,8 +181,6 @@ public class Distribution107InlineController extends Distribution107Controller {
       URL resource = serverWorking.toUri().toURL();
       System.setProperty("tc.install-root", kitDir.resolve("server").toString());
       System.setProperty("restart.inline", "true");
-      System.setProperty("com.tc.server.entity.processor.threads", "4");
-      System.setProperty("com.tc.l2.tccom.workerthreads", "4");
 
       ClassLoader loader = new IsolatedClassLoader(new URL[] {resource, url});
       Method m = Class.forName("com.tc.server.TCServerMain", true, loader).getMethod("createServer", List.class);
@@ -184,7 +188,6 @@ public class Distribution107InlineController extends Distribution107Controller {
     } catch (RuntimeException mal) {
       throw mal;
     } catch (Exception e) {
-      e.printStackTrace();
       throw new RuntimeException(e);
     } finally {
       Thread.currentThread().setContextClassLoader(oldLoader);
