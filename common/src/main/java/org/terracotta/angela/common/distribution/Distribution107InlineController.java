@@ -61,15 +61,13 @@ public class Distribution107InlineController extends Distribution107Controller {
     AtomicReference<Object> ref = new AtomicReference<>(startIsolatedServer(kitDir, serverName, serverWorking, cmd));
     AtomicBoolean isAlive = new AtomicBoolean(true);
     Thread t = new Thread(()->{
-      while ((Boolean)invokeOnObject(ref.get(), "waitUntilShutdown")) {
-        try {
+      try {
+        while ((Boolean)invokeOnObject(ref.get(), "waitUntilShutdown")) {
           ref.set(startIsolatedServer(kitDir, serverName, serverWorking, cmd));
-        } catch (Throwable tt) {
-          isAlive.set(false);
-          ref.set(null);
-          LOGGER.error("restart failed", tt);
-          throw tt;
         }
+      } catch (Throwable tt) {
+        ref.set(null);
+        LOGGER.error("restart failed", tt);
       }
       isAlive.set(false);
     });
