@@ -23,7 +23,7 @@
 
   <groupId>org.terracotta</groupId>
   <artifactId>angela-root</artifactId>
-  <version>3.1.19-SNAPSHOT</version>
+  <version>3.1.20-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>angela</name>
 
