@@ -30,7 +30,6 @@ import org.terracotta.angela.client.remote.agent.RemoteAgentLauncher;
 import org.terracotta.angela.common.cluster.Cluster;
 import org.terracotta.angela.common.metrics.HardwareMetric;
 import org.terracotta.angela.common.metrics.MonitoringCommand;
-import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.topology.InstanceId;
 
 import java.io.IOException;
