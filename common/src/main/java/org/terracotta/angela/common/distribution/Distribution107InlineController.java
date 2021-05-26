@@ -25,6 +25,7 @@ import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
 
 import java.io.File;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -37,6 +38,8 @@ import static java.lang.String.join;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.terracotta.angela.common.TerracottaServerHandle;
@@ -128,8 +131,10 @@ public class Distribution107InlineController extends Distribution107Controller {
 
       @Override
       public void stop() {
-        invokeOnServerMBean("Server", "stop", null);
-        invoke("waitUntilShutdown");
+        boolean stop = true;
+        while (stop) {
+          stop = Boolean.parseBoolean(invokeOnServerMBean("Server", "stopAndWait", null));
+        }
       }
 
       private String invokeOnServerMBean(String target, String call, String arg) {
@@ -178,11 +183,10 @@ public class Distribution107InlineController extends Distribution107Controller {
       URL url = tc.toUri().toURL();
       URL resource = serverWorking.toUri().toURL();
       System.setProperty("tc.install-root", kitDir.resolve("server").toString());
-      System.setProperty("restart.inline", "true");
 
       ClassLoader loader = new IsolatedClassLoader(new URL[] {resource, url});
-      Method m = Class.forName("com.tc.server.TCServerMain", true, loader).getMethod("createServer", List.class);
-      return m.invoke(null, cmd);
+      Method m = Class.forName("com.tc.server.TCServerMain", true, loader).getMethod("createServer", List.class, OutputStream.class);
+      return m.invoke(null, cmd, Files.newOutputStream(serverWorking.resolve("stdout.txt"), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
     } catch (RuntimeException mal) {
       throw mal;
     } catch (Exception e) {
